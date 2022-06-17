@@ -54,7 +54,7 @@ def loads_get_post():
         return json.dumps(output)
 
 
-@bp.route('/<id>', methods=['DELETE','GET'])
+@bp.route('/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
 def loads_put_delete(id):
     if request.method == 'DELETE':
         load_key = client.key(constants.loads, int(id))
@@ -86,6 +86,11 @@ def loads_put_delete(id):
         if load["carrier"]:
             load["carrier"]["self"] = request.host_url + 'boats/' + load["carrier"]["id"]
         return json.dumps(load), 200
-        
+    elif request.method == 'PUT':
+        # TODO: add put method for loads
+        pass
+    elif request.method == 'PATCH':
+        # TODO: add patch method for loads
+        pass
     else:
         return 'Method not recogonized'

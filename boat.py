@@ -1,8 +1,9 @@
-from distutils.log import error
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from google.cloud import datastore
 import json
 import constants
+from jwt import AuthError, verify_jwt
+from html_errors import *
 
 client = datastore.Client()
 
@@ -11,6 +12,12 @@ bp = Blueprint('boat', __name__, url_prefix='/boats')
 @bp.route('', methods=['POST','GET'])
 def boats_get_post():
     if request.method == 'POST':
+        # validate JWT
+        try:
+            payload = verify_jwt(request)
+        except AuthError as e:
+            return jsonify(e.error), e.status_code
+        
         # Save request info in variable
         content = request.get_json()
         # Create new boat entity object
@@ -19,24 +26,28 @@ def boats_get_post():
         try: 
             new_boat.update({
                 "name": content["name"], 
-                "type": content["type"],
                 "length": content["length"],
-                "loads": []
+                "date_built": content["date_built"],
+                # TODO: add owner ID from JWT
+                "owner": payload["sub"],
+                "loads": [],
+                "self": request.base_url + '/' + str(boat.key.id)
                 })
         except(KeyError):
-            return {"Error": "The request object is missing at least one of the required attributes"}, 400
+            return ERR_400_INVALID_ATTR
         # Add new boat to Google Cloud Store
         client.put(new_boat)
         # Return the new boat attributes
         response = {
             "id": new_boat.key.id,
             "name": new_boat["name"],
-            "type": new_boat["type"],
             "length": new_boat["length"],
+            "date_built": new_boat["date_built"],
+            "owner": new_boat["owner"],
             "loads": [],
             "self": request.base_url + '/' + str(new_boat.key.id)
         }
-        return response, 201
+        return json.dumps(response), 201
     elif request.method == 'GET':
         query = client.query(kind=constants.boats)
         q_limit = int(request.args.get('limit', '3'))  # default number of results is 3
@@ -65,7 +76,7 @@ def boats_get_post():
     else:
         return 'Method not recognized'
 
-@bp.route('/<id>', methods=['DELETE','GET'])
+@bp.route('/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
 def boats_put_delete(id):
     if request.method == 'DELETE':
         boat_key = client.key(constants.boats, int(id))
@@ -94,6 +105,26 @@ def boats_put_delete(id):
         for load in boat["loads"]:
             load["self"] = request.host_url + 'loads/' + load["id"]
         return json.dumps(boat), 200
+    elif request.method == 'PUT':
+        boat_key = client.key(constants.boats, int(id))
+        boat = client.get(key=boat_key)
+        # Send 404 error if no boat with the requested id exists
+        if not boat:
+            return ERR_404_INVALID_ID
+        # Iterate over provided attributes
+        content = request.get_json()
+        for attr in content:
+            boat[attr] = content[attr]
+        client.put(boat)
+        # Return the boat object
+        res = create_boat_res(boat)
+        res = make_response(json.dumps(res))
+        res.mimetype = 'application/json'
+        res.status_code = 200
+        return res
+    elif request.method == 'PATCH':
+        # TODO: add patch method for boats
+        pass
     else:
         return 'Method not recognized'
 
@@ -148,22 +179,3 @@ def add_delete_load(boat_id,load_id):
     else:
         return 'Method not recognized'
 
-@bp.route('/<id>/loads', methods=['GET'])
-def get_boat_loads(id):
-    boat_key = client.key(constants.boats, int(id))
-    boat = client.get(key=boat_key)
-    if not boat:
-        return {"Error": "No boat with this boat_id exists"}, 404
-    load_list  = []
-    for item in boat['loads']:
-        load_key = client.key(constants.loads, int(item["id"]))
-        load = client.get(key=load_key)
-        # Remove the carrier attribute from the load
-        load.pop('carrier', None)
-        load["id"] = int(item["id"])
-        load["self"] = request.host_url + 'loads/' + str(item["id"])
-        load_list.append(load)
-    res = {
-        "loads": load_list
-    }
-    return json.dumps(res), 200
