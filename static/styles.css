@@ -1,0 +1,13 @@
+pre.a {
+    word-break: break-all;
+    white-space: normal;
+}
+
+* {
+    text-align: center;
+}
+
+body {
+    max-width: 50%;
+    margin: auto;
+}

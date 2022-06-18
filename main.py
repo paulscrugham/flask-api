@@ -50,19 +50,18 @@ def login():
 def callback():
     # get token from auth0
     token = oauth.auth0.authorize_access_token()
-    # create and store a session in Google Datastore
+    # store user in Google Datastore
     new_user = datastore.entity.Entity(key=client.key(constants.users))
     new_user.update({
         'sub': token['userinfo']['sub'],
-        'name': token['userinfo']['name']
+        'name': token['userinfo']['name'],
+        'boats': []
         })
     client.put(new_user)
     return render_template("home.html", token=token)
 
 @app.route("/logout")
 def logout():
-    # session.clear()
-    # TODO: replace session.clear() with method to delete state from Datastore
     return redirect(
         "https://" + env.get("AUTH0_DOMAIN")
         + "/v2/logout?"
@@ -119,6 +118,17 @@ def boats_get_post():
         
         # Add new boat to Google Cloud Store
         client.put(new_boat)
+
+        # Update user entity
+        query = client.query(kind=constants.users)
+        query.add_filter("sub", "=", new_boat["owner"])
+        user = query.fetch()
+        user["boats"].append({
+            "name": new_boat["name"],
+            "id": new_boat.key.id
+        })
+        client.put(user)
+
         # Return the new boat attributes
         data = {
             "id": new_boat.key.id,
