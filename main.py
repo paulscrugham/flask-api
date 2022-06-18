@@ -1,7 +1,6 @@
 from google.cloud import datastore
-from flask import Flask, request, url_for, render_template, redirect, jsonify
+from flask import Flask, request, url_for, render_template, redirect, jsonify, make_response
 from os import environ as env
-from uuid import uuid4
 from dotenv import find_dotenv, load_dotenv
 from authlib.integrations.flask_client import OAuth
 from urllib.parse import quote_plus, urlencode
@@ -9,6 +8,8 @@ from jwt import AuthError, verify_jwt
 from html_errors import *
 import json
 import constants
+
+DEBUG = True
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -35,28 +36,9 @@ client = datastore.Client()
 #           AUTH APP ROUTES
 # ---------------------------------------------
 
-def get_state(state):
-    """
-    Queries Datastore for the session with the matching state attribute.
-    """
-    # get session (Datastore entity with matching state attribute)
-    query = client.query(kind=constants.states)
-    results = list(query.fetch())
-    for e in results:
-        if e['state'] == state:
-            return e
-    return None
-
 @app.route("/")
 def home():
-    return render_template("home.html", state=None)
-
-@app.route("/userinfo/<state>")
-def userinfo(state):
-    curr_state = get_state(state)
-    if not curr_state:
-        return json.dumps({'Error': 'State could not be verified'}), 401
-    return render_template("home.html", state=curr_state)
+    return render_template("home.html", token=None)
 
 @app.route("/login")
 def login():
@@ -64,20 +46,18 @@ def login():
         redirect_uri=url_for("callback", _external=True)
     )
 
-@app.route("/callback", methods=["GET", "POST"])
+@app.route("/userinfo", methods=["GET", "POST"])
 def callback():
     # get token from auth0
     token = oauth.auth0.authorize_access_token()
     # create and store a session in Google Datastore
-    random_string = str(uuid4())
-    new_state = datastore.entity.Entity(key=client.key(constants.states))
-    new_state.update({
-        'state': random_string,
-        'id_token': token['id_token'],
+    new_user = datastore.entity.Entity(key=client.key(constants.users))
+    new_user.update({
+        'sub': token['userinfo']['sub'],
         'name': token['userinfo']['name']
         })
-    client.put(new_state)
-    return redirect("/userinfo/{}".format(random_string))
+    client.put(new_user)
+    return render_template("home.html", token=token)
 
 @app.route("/logout")
 def logout():
@@ -111,11 +91,15 @@ def users_get():
 @app.route('/boats', methods=['POST','GET'])
 def boats_get_post():
     if request.method == 'POST':
-        # validate JWT
+        # verify JWT
         try:
             payload = verify_jwt(request)
         except AuthError as e:
             return jsonify(e.error), e.status_code
+
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
         
         # Save request info in variable
         content = request.get_json()
@@ -127,17 +111,16 @@ def boats_get_post():
                 "name": content["name"], 
                 "length": content["length"],
                 "date_built": content["date_built"],
-                # TODO: add owner ID from JWT
                 "owner": payload["sub"],
-                "loads": [],
-                "self": request.base_url + '/' + str(boat.key.id)
+                "loads": []
                 })
         except(KeyError):
-            return ERR_400_INVALID_ATTR
+            return constants.ERR_400_INVALID_ATTR
+        
         # Add new boat to Google Cloud Store
         client.put(new_boat)
         # Return the new boat attributes
-        response = {
+        data = {
             "id": new_boat.key.id,
             "name": new_boat["name"],
             "length": new_boat["length"],
@@ -146,10 +129,23 @@ def boats_get_post():
             "loads": [],
             "self": request.base_url + '/' + str(new_boat.key.id)
         }
-        return json.dumps(response), 201
+        res = make_response(json.dumps(data))
+        res.mimetype = constants.application_json
+        res.status_code = 201
+        return res
+
     elif request.method == 'GET':
+        # verify JWT
+        try:
+            payload = verify_jwt(request)
+        except AuthError as e:
+            return jsonify(e.error), e.status_code
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
         query = client.query(kind=constants.boats)
-        q_limit = int(request.args.get('limit', '3'))  # default number of results is 3
+        query.add_filter("owner", "=", payload['sub'])
+        q_limit = int(request.args.get('limit', '5'))  # default number of results is 3
         q_offset = int(request.args.get('offset', '0'))  # default offset is 0
         b_iterator = query.fetch(limit=q_limit, offset=q_offset)
         pages = b_iterator.pages
@@ -167,13 +163,16 @@ def boats_get_post():
             for load in boat["loads"]:
                 load["self"] = request.host_url + 'loads/' + str(load["id"])
                 
-        output = {"boats": results}
+        data = {"boats": results}
         # Add url of next page to output
         if next_url:
-            output["next"] = next_url
-        return json.dumps(output)
+            data["next"] = next_url
+        res = make_response(json.dumps(data))
+        res.mimetype = constants.application_json
+        res.status_code = 201
+        return res
     else:
-        return 'Method not recognized'
+        return ERR_405_NO_METHOD
 
 @app.route('/boats/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
 def boats_put_delete(id):
@@ -193,23 +192,45 @@ def boats_put_delete(id):
         client.delete(boat_key)
         return '', 204
     elif request.method == 'GET':
+        # verify JWT
+        try:
+            payload = verify_jwt(request)
+            if DEBUG: print("Received JWT verified for {}".format(payload['sub']))
+        except AuthError as e:
+            return jsonify(e.error), e.status_code
+        
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
+        
         boat_key = client.key(constants.boats, int(id))
         boat = client.get(key=boat_key)
-        # Send 404 error if no boat with the requested id exists
+        
         if not boat:
-            return {"Error": "No boat with this boat_id exists"}, 404
+            return ERR_404_INVALID_ID
+
+        if payload['sub'] != boat['owner']:
+            return ERR_403_BOAT_OWNER
+        
         boat["id"] = boat.key.id  # Add id value to response
         boat["self"] = request.base_url  # Add boat URL to response
         # Add load URLs to response
         for load in boat["loads"]:
             load["self"] = request.host_url + 'loads/' + load["id"]
-        return json.dumps(boat), 200
+        res = make_response(json.dumps(boat))
+        res.status_code = 200
+        res.mimetype = constants.application_json
+        return res
     elif request.method == 'PUT':
         boat_key = client.key(constants.boats, int(id))
         boat = client.get(key=boat_key)
-        # Send 404 error if no boat with the requested id exists
+
         if not boat:
             return ERR_404_INVALID_ID
+        
+        if payload['sub'] != boat['owner']:
+            return ERR_403_BOAT_OWNER
+        
         # Iterate over provided attributes
         content = request.get_json()
         for attr in content:
@@ -218,21 +239,32 @@ def boats_put_delete(id):
         # Return the boat object
         res = create_boat_res(boat)
         res = make_response(json.dumps(res))
-        res.mimetype = 'application/json'
+        res.mimetype = constants.application_json
         res.status_code = 200
         return res
     elif request.method == 'PATCH':
         # TODO: add patch method for boats
         pass
     else:
-        return 'Method not recognized'
+        return ERR_405_NO_METHOD
 
 @app.route('/boats/<boat_id>/loads/<load_id>', methods=['PUT','DELETE'])
 def add_delete_load(boat_id,load_id):
     # Add a load to a boat
     if request.method == 'PUT':
+        # verify JWT
+        try:
+            payload = verify_jwt(request)
+        except AuthError as e:
+            return jsonify(e.error), e.status_code
+
         boat_key = client.key(constants.boats, int(boat_id))
         boat = client.get(key=boat_key)
+        
+        # check that owner of received JWT matches that of the boat
+        if payload['sub'] != boat['owner']:
+            return ERR_403_BOAT_OWNER
+
         load_key = client.key(constants.loads, int(load_id))
         load = client.get(key=load_key)
         # Check if the boat and/or load exists
@@ -256,9 +288,20 @@ def add_delete_load(boat_id,load_id):
         client.put(boat)
         return '', 204
     elif request.method == 'DELETE':
+        # verify JWT
+        try:
+            payload = verify_jwt(request)
+        except AuthError as e:
+            return jsonify(e.error), e.status_code
         error_msg = {"Error": "No boat with this boat_id is loaded with the load with this load_id"}
+        
         boat_key = client.key(constants.boats, int(boat_id))
         boat = client.get(key=boat_key)
+
+        # check that owner of received JWT matches that of the boat
+        if payload['sub'] != boat['owner']:
+            return ERR_403_BOAT_OWNER
+        
         load_key = client.key(constants.loads, int(load_id))
         load = client.get(key=load_key)
         # Check if the boat and/or load exists
@@ -276,7 +319,7 @@ def add_delete_load(boat_id,load_id):
         # Return 404 if the load was not found on the boat
         return error_msg, 404
     else:
-        return 'Method not recognized'
+        return ERR_405_NO_METHOD
 
 # ---------------------------------------------
 #           LOADS APP ROUTES
@@ -285,6 +328,9 @@ def add_delete_load(boat_id,load_id):
 @app.route('/loads', methods=['POST','GET'])
 def loads_get_post():
     if request.method == 'POST':
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
         content = request.get_json()
         new_load = datastore.entity.Entity(key=client.key(constants.loads))
         try:
@@ -295,10 +341,10 @@ def loads_get_post():
                 "creation_date": content["creation_date"]
                 })
         except(KeyError):
-            return {"Error": "The request object is missing at least one of the required attributes"}, 400
+            return ERR_400_INVALID_ATTR
         client.put(new_load)
-        # Return the new boat attributes
-        response = {
+        # Return the new load attributes
+        data = {
             "id": new_load.key.id,
             "volume": new_load["volume"],
             "carrier": new_load["carrier"],
@@ -306,10 +352,16 @@ def loads_get_post():
             "creation_date": new_load["creation_date"],
             "self": request.base_url + '/' + str(new_load.key.id)
         }
-        return response, 201
+        res = make_response(data)
+        res.mimetype = constants.application_json
+        res.status_code = 201
+        return res
     elif request.method == 'GET':
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
         query = client.query(kind=constants.loads)
-        q_limit = int(request.args.get('limit', '3'))
+        q_limit = int(request.args.get('limit', '5'))
         q_offset = int(request.args.get('offset', '0'))
         l_iterator = query.fetch(limit= q_limit, offset=q_offset)
         pages = l_iterator.pages
@@ -322,11 +374,15 @@ def loads_get_post():
         for e in results:
             e["id"] = e.key.id
             e["self"] = request.base_url + '/' + str(e.key.id)
-        output = {"loads": results}
+        data = {"loads": results}
         if next_url:
-            output["next"] = next_url
-        return json.dumps(output)
-
+            data["next"] = next_url
+        res = make_response(json.dumps(data))
+        res.mimetype = constants.application_json
+        res.status_code = 200
+        return res
+    else:
+        return ERR_405_NO_METHOD
 
 @app.route('/loads/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
 def loads_put_delete(id):
@@ -349,6 +405,9 @@ def loads_put_delete(id):
         client.delete(load_key)
         return '', 204
     elif request.method == 'GET':
+        # Validate that request format is JSON
+        if request.content_type != constants.application_json:
+            return ERR_415_INVALID_MIME
         load_key = client.key(constants.loads, int(id))
         load = client.get(key=load_key)
         # Send 404 error if no boat with the requested id exists
@@ -359,7 +418,10 @@ def loads_put_delete(id):
         # Populate carrier attribute
         if load["carrier"]:
             load["carrier"]["self"] = request.host_url + 'boats/' + load["carrier"]["id"]
-        return json.dumps(load), 200
+        res = make_response(json.dumps(load))
+        res.status_code = 200
+        res.mimetype = constants.application_json
+        return res
     elif request.method == 'PUT':
         # TODO: add put method for loads
         pass
@@ -367,7 +429,7 @@ def loads_put_delete(id):
         # TODO: add patch method for loads
         pass
     else:
-        return 'Method not recogonized'
+        return ERR_405_NO_METHOD
 
 
 if __name__ == '__main__':
