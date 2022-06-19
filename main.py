@@ -56,6 +56,11 @@ def get_load(load_id):
     load = client.get(key=load_key)
     return load_key, load
 
+def get_boat(boat_id):
+    boat_key = client.key(constants.boats, int(boat_id))
+    boat = client.get(key=boat_key)
+    return boat_key, boat
+
 # ---------------------------------------------
 #           ERROR HANDLER ROUTES
 # ---------------------------------------------
@@ -238,8 +243,7 @@ def boats_get_put_patch_delete(id):
     # Authenticate owner
     payload = verify_jwt(request)
 
-    boat_key = client.key(constants.boats, int(id))
-    boat = client.get(key=boat_key)
+    boat_key, boat = get_boat(id)
     
     # Send 404 error if no boat with the requested id exists
     if not boat:
@@ -334,14 +338,10 @@ def boats_get_put_patch_delete(id):
 def add_load(boat_id,load_id):
     # Authenticate owner
     payload = verify_jwt(request)
-
-    boat_key = client.key(constants.boats, int(boat_id))
-    boat = client.get(key=boat_key)
-    
+    boat_key, boat = get_boat(boat_id)
     authorize_boat_owner(payload, boat)
-
-    load_key = client.key(constants.loads, int(load_id))
-    load = client.get(key=load_key)
+    load_key, load = get_load(load_id)
+    
     # Check if the boat and/or load exists
     if not boat or not load:
         raise APIError(ERR_404_INVALID_ID)
@@ -367,14 +367,10 @@ def add_load(boat_id,load_id):
 def delete_load(boat_id,load_id):
     # Authenticate owner
     payload = verify_jwt(request)
-    
-    boat_key = client.key(constants.boats, int(boat_id))
-    boat = client.get(key=boat_key)
-
+    boat_key, boat = get_boat(boat_id)
     authorize_boat_owner(payload, boat)
+    load_key, load = get_load(load_id)
     
-    load_key = client.key(constants.loads, int(load_id))
-    load = client.get(key=load_key)
     # Check if the boat and/or load exists
     if not boat or not load:
         raise APIError(ERR_404_INVALID_ID)
@@ -453,9 +449,8 @@ def loads_get_post():
 
 @app.route('/loads/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
 def loads_put_delete(id):
+    load_key, load = get_load(id)
     if request.method == 'DELETE':
-        load_key = client.key(constants.loads, int(id))
-        load = client.get(key=load_key)
         # Send 404 error if no boat with the requested id exists
         if not load:
             raise APIError(ERR_404_INVALID_ID)
@@ -473,8 +468,6 @@ def loads_put_delete(id):
         return '', 204
     elif request.method == 'GET':
         validate_content_type(request)
-        load_key = client.key(constants.loads, int(id))
-        load = client.get(key=load_key)
         # Send 404 error if no boat with the requested id exists
         if not load:
             raise APIError(ERR_404_INVALID_ID)
@@ -490,10 +483,7 @@ def loads_put_delete(id):
     elif request.method == 'PUT':
         validate_content_type(request)
         
-        load_key = client.key(constants.loads, int(id))
-        load = client.get(key=load_key)
-        
-        # Replace boat entity content
+        # Replace load entity content
         content = request.get_json()
         load["volume"] = content["volume"]
         load["item"] = content["item"]
@@ -502,7 +492,10 @@ def loads_put_delete(id):
         # Update load
         client.put(load)
 
-        # Return the boat object
+        # Update load representation on its carrier
+        
+
+        # Return the load object
         load["id"] = load.key.id  # Add id value to response
         load["self"] = request.base_url  # Add boat URL to response
         res = make_response(json.dumps(load))
@@ -511,9 +504,6 @@ def loads_put_delete(id):
         return res
     elif request.method == 'PATCH':
         validate_content_type(request)
-        
-        load_key = client.key(constants.loads, int(id))
-        load = client.get(key=load_key)
         
         # Replace boat entity content
         content = request.get_json()
