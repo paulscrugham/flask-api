@@ -1,4 +1,5 @@
 from audioop import add
+from venv import create
 from google.cloud import datastore
 from flask import Flask, request, url_for, render_template, redirect, jsonify, make_response
 from os import environ as env
@@ -44,7 +45,7 @@ def get_user_from_sub(sub):
 def validate_content_type(req):
     """Validate that the request format is application/json"""
     if req.content_type != 'application/json':
-        raise APIError(ERR_415_INVALID_MIME)
+        raise APIError(ERR_406_INVALID_MIME)
 
 def authorize_boat_owner(payload, boat):
     # check that owner of received JWT matches that of the boat
@@ -61,12 +62,43 @@ def get_boat(boat_id):
     boat = client.get(key=boat_key)
     return boat_key, boat
 
+def create_boat_repr(boat):
+    boat["id"] = boat.key.id  # Add id value to response
+    boat["self"] = request.url_root + 'boats/' + str(boat.key.id)  # Add boat URL to response
+    # Add load representation to response
+    rep_loads = []
+    for load in boat["loads"]:
+        temp = {
+            "id": load,
+            "item": get_load(load)[1]["item"],
+            "self": request.host_url + 'loads/' + str(load)
+            }
+        rep_loads.append(temp)
+    boat["loads"] = rep_loads
+    return boat
+
+def create_load_repr(load):
+    load["id"] = load.key.id  # Add id value to response
+    load["self"] = request.url_root + 'loads/' +  str(load.key.id) # Add URL to response
+    # Create carrier representation
+    if load["carrier"]:
+        temp = {
+            "id": load["carrier"],
+            "name": get_boat(load["carrier"])[1]["name"],
+            "self": request.host_url + 'boats/' + str(load["carrier"])
+        }
+        load["carrier"] = temp
+    return load
+
 # ---------------------------------------------
 #           ERROR HANDLER ROUTES
 # ---------------------------------------------
 @app.errorhandler(AuthError)
 def handle_auth_exception(e):
-    return jsonify(e.error), e.status_code
+    res = make_response({"Error": e.error["description"]})
+    res.status_code = e.status_code
+    res.content_type = "application/json"
+    return res
 
 class APIError(Exception):
     def __init__(self, e):
@@ -74,8 +106,8 @@ class APIError(Exception):
         self.status_code = e["status_code"]
 
 @app.errorhandler(APIError)
-def handle_http_exception(e):
-    res = make_response(e.description)
+def handle_api_exception(e):
+    res = make_response({"Error": e.description})
     res.status_code = e.status_code
     res.content_type = "application/json"
     return res
@@ -140,8 +172,14 @@ def users_get():
         query = client.query(kind=constants.users)
         data = list(query.fetch())
         for user in data:
+            rep_boats = []
             for boat in user["boats"]:
-                boat["self"] = request.url_root + 'boats/' + str(boat["id"])
+                temp = {}
+                temp["id"] = boat
+                temp["name"] = get_boat(boat)[1]["name"]
+                temp["self"] = request.url_root + 'boats/' + str(boat)
+                rep_boats.append(temp)
+            user["boats"] = rep_boats
         res = make_response(json.dumps(data))
         res.mimetype = constants.application_json
         res.status_code = 200
@@ -165,17 +203,13 @@ def boats_get_post():
         content = request.get_json()
         # Create new boat entity object
         new_boat = datastore.entity.Entity(key=client.key(constants.boats))
-        # try/except block to catch a missing attribute
-        try: 
-            new_boat.update({
-                "name": content["name"], 
-                "length": content["length"],
-                "date_built": content["date_built"],
-                "owner": payload["sub"],
-                "loads": []
-                })
-        except(KeyError):
-            raise APIError(ERR_400_INVALID_ATTR)
+        new_boat.update({
+            "name": content["name"], 
+            "length": content["length"],
+            "date_built": content["date_built"],
+            "owner": payload["sub"],
+            "loads": []
+            })
         
         # Add new boat to Google Cloud Store
         client.put(new_boat)
@@ -184,10 +218,7 @@ def boats_get_post():
         query = client.query(kind=constants.users)
         query.add_filter("sub", "=", payload["sub"])
         user = list(query.fetch(limit=1))[0]
-        user["boats"].append({
-            "name": new_boat["name"],
-            "id": new_boat.key.id
-        })
+        user["boats"].append(new_boat.key.id)
         client.put(user)
 
         # Return the new boat attributes
@@ -209,6 +240,8 @@ def boats_get_post():
         validate_content_type(request)
         query = client.query(kind=constants.boats)
         query.add_filter("owner", "=", payload["sub"])
+        
+        # Apply pagination to results
         q_limit = int(request.args.get('limit', '5'))  # default number of results is 3
         q_offset = int(request.args.get('offset', '0'))  # default offset is 0
         b_iterator = query.fetch(limit=q_limit, offset=q_offset)
@@ -220,14 +253,13 @@ def boats_get_post():
             next_url = request.base_url + "?limit=" + str(q_limit) + "&offset=" + str(next_offset)
         else:
             next_url = None
-        # Add id of entity, self URL, and load info to results
+        
+        # Create list of boat representations
+        rep_results = []
         for boat in results:
-            boat["id"] = boat.key.id
-            boat["self"] = request.base_url + '/' + str(boat.key.id)
-            for load in boat["loads"]:
-                load["self"] = request.host_url + 'loads/' + str(load["id"])
+            rep_results.append(create_boat_repr(boat))
                 
-        data = {"boats": results}
+        data = {"boats": rep_results}
         # Add url of next page to output
         if next_url:
             data["next"] = next_url
@@ -255,14 +287,13 @@ def boats_get_put_patch_delete(id):
     if request.method == 'DELETE':
         # Update the carrier attribute of all loads on this boat
         for item in boat["loads"]:
-            load_key = client.key(constants.loads, int(item["id"]))
-            load = client.get(key=load_key)
+            load_key, load = get_load(item)
             load["carrier"] = None
             client.put(load)
 
         # Update the boats attribute of the owner's user entity
         user = get_user_from_sub(payload["sub"])
-        boat_to_delete = [item for item in user["boats"] if item['id'] == boat.key.id][0]
+        boat_to_delete = [item for item in user["boats"] if item == boat.key.id][0]
         user["boats"].remove(boat_to_delete)
         client.put(user)
 
@@ -271,12 +302,7 @@ def boats_get_put_patch_delete(id):
         return '', 204
     elif request.method == 'GET':
         validate_content_type(request)
-        
-        boat["id"] = boat.key.id  # Add id value to response
-        boat["self"] = request.base_url  # Add boat URL to response
-        # Add load URLs to response
-        for load in boat["loads"]:
-            load["self"] = request.host_url + 'loads/' + str(load["id"])
+        boat = create_boat_repr(boat)
         res = make_response(json.dumps(boat))
         res.status_code = 200
         res.mimetype = constants.application_json
@@ -292,7 +318,7 @@ def boats_get_put_patch_delete(id):
 
         # Remove boat to load relationships
         for load in boat["loads"]:
-            delete_load(boat.key.id, load["id"])
+            delete_load(boat.key.id, load)
 
         boat["loads"] = []
 
@@ -300,11 +326,10 @@ def boats_get_put_patch_delete(id):
         client.put(boat)
         
         # Return the boat object
-        boat["id"] = boat.key.id  # Add id value to response
-        boat["self"] = request.base_url  # Add boat URL to response
+        boat = create_boat_repr(boat)
         res = make_response(json.dumps(boat))
         res.mimetype = constants.application_json
-        res.status_code = 201
+        res.status_code = 200
         return res
     elif request.method == 'PATCH':
         validate_content_type(request)
@@ -320,17 +345,12 @@ def boats_get_put_patch_delete(id):
         if 'loads' in content:
             for load in content["loads"]:
                 try:
-                    add_load(boat.key.id, load["id"])
+                    add_load(boat.key.id, load)
                     boat["loads"].append(load)
                 except(APIError):
                     print("Load already on boat")
 
-        boat["id"] = boat.key.id  # Add id value to response
-        boat["self"] = request.base_url  # Add boat URL to response
-        res = make_response(json.dumps(boat))
-        res.status_code = 200
-        res.mimetype = constants.application_json
-        return res
+        return '', 204
     else:
         raise APIError(ERR_405_NO_METHOD)
 
@@ -349,15 +369,9 @@ def add_load(boat_id,load_id):
     if load["carrier"]:
         raise APIError(ERR_403_LOAD)
     # Add boat to load
-    load["carrier"] = {
-        "id": int(boat_id),
-        "name": boat["name"]
-    }
+    load["carrier"] = int(boat_id)
     # Add load to boat
-    boat["loads"].append({
-        "id": int(load_id),
-        "item": load["item"]
-    })
+    boat["loads"].append(int(load_id))
     # Update both boat and load
     client.put(load)
     client.put(boat)
@@ -375,7 +389,7 @@ def delete_load(boat_id,load_id):
     if not boat or not load:
         raise APIError(ERR_404_INVALID_ID)
     for item in boat["loads"]:
-        if item["id"] == load_id:
+        if item == int(load_id):
             # Remove load from boat
             boat["loads"].remove(item)
             client.put(boat)
@@ -422,7 +436,7 @@ def loads_get_post():
         return res
     elif request.method == 'GET':
         validate_content_type(request)
-
+        # Apply pagination to results
         query = client.query(kind=constants.loads)
         q_limit = int(request.args.get('limit', '5'))
         q_offset = int(request.args.get('offset', '0'))
@@ -434,10 +448,10 @@ def loads_get_post():
             next_url = request.base_url + "?limit=" + str(q_limit) + "&offset=" + str(next_offset)
         else:
             next_url = None
-        for e in results:
-            e["id"] = e.key.id
-            e["self"] = request.base_url + '/' + str(e.key.id)
-        data = {"loads": results}
+        repr_results = []
+        for load in results:
+            repr_results.append(create_load_repr(load))
+        data = {"loads": repr_results}
         if next_url:
             data["next"] = next_url
         res = make_response(json.dumps(data))
@@ -448,7 +462,7 @@ def loads_get_post():
         raise APIError(ERR_405_NO_METHOD)
 
 @app.route('/loads/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
-def loads_put_delete(id):
+def loads_get_put_patch_delete(id):
     load_key, load = get_load(id)
     if request.method == 'DELETE':
         # Send 404 error if no boat with the requested id exists
@@ -473,9 +487,14 @@ def loads_put_delete(id):
             raise APIError(ERR_404_INVALID_ID)
         load["id"] = load.key.id  # Add id value to response
         load["self"] = request.base_url  # Add URL to response
-        # Populate carrier attribute
+        # Create carrier representation
         if load["carrier"]:
-            load["carrier"]["self"] = request.host_url + 'boats/' + str(load["carrier"]["id"])
+            temp = {
+                "id": load["carrier"],
+                "name": get_boat(load["carrier"])[1]["name"],
+                "self": request.host_url + 'boats/' + str(load["carrier"])
+            }
+            load["carrier"] = temp
         res = make_response(json.dumps(load))
         res.status_code = 200
         res.mimetype = constants.application_json
@@ -492,15 +511,12 @@ def loads_put_delete(id):
         # Update load
         client.put(load)
 
-        # Update load representation on its carrier
-        
-
         # Return the load object
         load["id"] = load.key.id  # Add id value to response
         load["self"] = request.base_url  # Add boat URL to response
         res = make_response(json.dumps(load))
         res.mimetype = constants.application_json
-        res.status_code = 201
+        res.status_code = 200
         return res
     elif request.method == 'PATCH':
         validate_content_type(request)
@@ -512,14 +528,7 @@ def loads_put_delete(id):
 
         # Update load
         client.put(load)
-
-        # Return the boat object
-        load["id"] = load.key.id  # Add id value to response
-        load["self"] = request.base_url  # Add boat URL to response
-        res = make_response(json.dumps(load))
-        res.mimetype = constants.application_json
-        res.status_code = 201
-        return res
+        return '', 204
     else:
         raise APIError(ERR_405_NO_METHOD)
 
