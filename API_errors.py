@@ -28,12 +28,7 @@ ERR_405_NO_METHOD = {
     "status_code": 405
 }
 
-ERR_406_INVALID_ACCEPT = {
-    "description": "The requested MIME type is not supported.",
-    "status_code": 406
-}
-
-ERR_415_INVALID_MIME = {
+ERR_406_INVALID_MIME = {
     "description": "The MIME type of the request object is not accepted",
-    "status_code": 415
+    "status_code": 406
 }
