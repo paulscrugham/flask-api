@@ -11,8 +11,11 @@ from jwt import AuthError, verify_jwt
 from API_errors import *
 import json
 import constants
+import os
 
 DEBUG = True
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = 'google_creds.json'
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
