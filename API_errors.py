@@ -8,13 +8,18 @@ ERR_403_NAME_EXISTS = {
     "status_code": 403
 }
 
-ERR_403_BOAT_OWNER = {
-    "description": "This boat is owned by someone else.", 
+ERR_403_STATION_OWNER = {
+    "description": "This station is owned by someone else.", 
     "status_code": 403
 }
 
-ERR_403_LOAD = {
-    "description": "The load is already loaded on another boat",
+ERR_403_SAME_STATION_OWNER = {
+    "description": "This station is already owned by this user.", 
+    "status_code": 403
+}
+
+ERR_403_READING = {
+    "description": "The load is already loaded on another station",
     "status_code": 403
 }
 

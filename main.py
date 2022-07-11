@@ -11,8 +11,11 @@ from jwt import AuthError, verify_jwt
 from API_errors import *
 import json
 import constants
+import os
 
 DEBUG = True
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = 'google_creds.json'
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -47,48 +50,53 @@ def validate_content_type(req):
     if req.content_type != 'application/json':
         raise APIError(ERR_406_INVALID_MIME)
 
-def authorize_boat_owner(payload, boat):
-    # check that owner of received JWT matches that of the boat
-    if payload['sub'] != boat['owner']:
-        raise APIError(ERR_403_BOAT_OWNER)
+def authorize_station_owner(payload, station):
+    # check that owner of received JWT matches that of the station
+    if payload['sub'] != station['owner']:
+        raise APIError(ERR_403_STATION_OWNER)
 
-def get_load(load_id):
-    load_key = client.key(constants.loads, int(load_id))
-    load = client.get(key=load_key)
-    return load_key, load
+def get_reading(reading_id):
+    reading_key = client.key(constants.readings, int(reading_id))
+    reading = client.get(key=reading_key)
+    return reading_key, reading
 
-def get_boat(boat_id):
-    boat_key = client.key(constants.boats, int(boat_id))
-    boat = client.get(key=boat_key)
-    return boat_key, boat
+def get_station(station_id):
+    station_key = client.key(constants.stations, int(station_id))
+    station = client.get(key=station_key)
+    return station_key, station
 
-def create_boat_repr(boat):
-    boat["id"] = boat.key.id  # Add id value to response
-    boat["self"] = request.url_root + 'boats/' + str(boat.key.id)  # Add boat URL to response
-    # Add load representation to response
-    rep_loads = []
-    for load in boat["loads"]:
+def get_user(user_id):
+    user_key = client.key(constants.users, int(user_id))
+    user = client.get(key=user_key)
+    return user_key, user
+
+def create_station_repr(station):
+    station["id"] = station.key.id  # Add id value to response
+    station["self"] = request.url_root + 'stations/' + str(station.key.id)  # Add station URL to response
+    # Add reading representation to response
+    rep_readings = []
+    for reading in station["readings"]:
         temp = {
-            "id": load,
-            "item": get_load(load)[1]["item"],
-            "self": request.host_url + 'loads/' + str(load)
+            "id": reading,
+            "value": get_reading(reading)[1]["value"],
+            "self": request.host_url + 'readings/' + str(reading)
             }
-        rep_loads.append(temp)
-    boat["loads"] = rep_loads
-    return boat
+        rep_readings.append(temp)
+    station["readings"] = rep_readings
+    return station
 
-def create_load_repr(load):
-    load["id"] = load.key.id  # Add id value to response
-    load["self"] = request.url_root + 'loads/' +  str(load.key.id) # Add URL to response
-    # Create carrier representation
-    if load["carrier"]:
+def create_reading_repr(reading):
+    reading["id"] = reading.key.id  # Add id value to response
+    reading["self"] = request.url_root + 'readings/' +  str(reading.key.id) # Add URL to response
+    # Create source representation
+    if reading["source"]:
         temp = {
-            "id": load["carrier"],
-            "name": get_boat(load["carrier"])[1]["name"],
-            "self": request.host_url + 'boats/' + str(load["carrier"])
+            "id": reading["source"],
+            "name": get_station(reading["source"])[1]["name"],
+            "self": request.host_url + 'stations/' + str(reading["source"])
         }
-        load["carrier"] = temp
-    return load
+        reading["source"] = temp
+    return reading
 
 # ---------------------------------------------
 #           ERROR HANDLER ROUTES
@@ -141,7 +149,7 @@ def callback():
         new_user.update({
             'sub': token['userinfo']['sub'],
             'name': token['userinfo']['name'],
-            'boats': []
+            'stations': []
             })
         client.put(new_user)
     return render_template("home.html", token=token)
@@ -172,14 +180,14 @@ def users_get():
         query = client.query(kind=constants.users)
         data = list(query.fetch())
         for user in data:
-            rep_boats = []
-            for boat in user["boats"]:
+            rep_stations = []
+            for station in user["stations"]:
                 temp = {}
-                temp["id"] = boat
-                temp["name"] = get_boat(boat)[1]["name"]
-                temp["self"] = request.url_root + 'boats/' + str(boat)
-                rep_boats.append(temp)
-            user["boats"] = rep_boats
+                temp["id"] = station
+                temp["name"] = get_station(station)[1]["name"]
+                temp["self"] = request.url_root + 'stations/' + str(station)
+                rep_stations.append(temp)
+            user["stations"] = rep_stations
         res = make_response(json.dumps(data))
         res.mimetype = constants.application_json
         res.status_code = 200
@@ -188,11 +196,11 @@ def users_get():
         raise APIError(ERR_405_NO_METHOD)
 
 # ---------------------------------------------
-#           BOATS APP ROUTES
+#           STATIONS APP ROUTES
 # ---------------------------------------------
 
-@app.route('/boats', methods=['POST','GET'])
-def boats_get_post():
+@app.route('/stations', methods=['POST','GET'])
+def stations_get_post():
     # Authenticate owner
     payload = verify_jwt(request)
     
@@ -201,35 +209,35 @@ def boats_get_post():
         
         # Save request info in variable
         content = request.get_json()
-        # Create new boat entity object
-        new_boat = datastore.entity.Entity(key=client.key(constants.boats))
-        new_boat.update({
+        # Create new station entity object
+        new_station = datastore.entity.Entity(key=client.key(constants.stations))
+        new_station.update({
             "name": content["name"], 
-            "length": content["length"],
-            "date_built": content["date_built"],
+            "reading_types": content["reading_types"],
+            "on_since": content["on_since"],
             "owner": payload["sub"],
-            "loads": []
+            "readings": []
             })
         
-        # Add new boat to Google Cloud Store
-        client.put(new_boat)
+        # Add new station to Google Cloud Store
+        client.put(new_station)
 
         # Update user entity
         query = client.query(kind=constants.users)
         query.add_filter("sub", "=", payload["sub"])
         user = list(query.fetch(limit=1))[0]
-        user["boats"].append(new_boat.key.id)
+        user["stations"].append(new_station.key.id)
         client.put(user)
 
-        # Return the new boat attributes
+        # Return the new station attributes
         data = {
-            "id": new_boat.key.id,
-            "name": new_boat["name"],
-            "length": new_boat["length"],
-            "date_built": new_boat["date_built"],
-            "owner": new_boat["owner"],
-            "loads": [],
-            "self": request.base_url + '/' + str(new_boat.key.id)
+            "id": new_station.key.id,
+            "name": new_station["name"],
+            "reading_types": new_station["reading_types"],
+            "on_since": new_station["on_since"],
+            "owner": new_station["owner"],
+            "readings": [],
+            "self": request.base_url + '/' + str(new_station.key.id)
         }
         res = make_response(json.dumps(data))
         res.mimetype = constants.application_json
@@ -238,7 +246,7 @@ def boats_get_post():
 
     elif request.method == 'GET':
         validate_content_type(request)
-        query = client.query(kind=constants.boats)
+        query = client.query(kind=constants.stations)
         query.add_filter("owner", "=", payload["sub"])
         
         # Apply pagination to results
@@ -254,12 +262,12 @@ def boats_get_post():
         else:
             next_url = None
         
-        # Create list of boat representations
+        # Create list of station representations
         rep_results = []
-        for boat in results:
-            rep_results.append(create_boat_repr(boat))
+        for station in results:
+            rep_results.append(create_station_repr(station))
                 
-        data = {"boats": rep_results}
+        data = {"stations": rep_results}
         # Add url of next page to output
         if next_url:
             data["next"] = next_url
@@ -270,64 +278,62 @@ def boats_get_post():
     else:
         raise APIError(ERR_405_NO_METHOD)
 
-@app.route('/boats/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
-def boats_get_put_patch_delete(id):
+@app.route('/stations/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
+def stations_get_put_patch_delete(id):
     # Authenticate owner
     payload = verify_jwt(request)
 
-    boat_key, boat = get_boat(id)
+    station_key, station = get_station(id)
     
-    # Send 404 error if no boat with the requested id exists
-    if not boat:
+    # Send 404 error if no station with the requested id exists
+    if not station:
         raise APIError(ERR_404_INVALID_ID)
     
     # Authorize owner
-    authorize_boat_owner(payload, boat)
+    authorize_station_owner(payload, station)
 
     if request.method == 'DELETE':
-        # Update the carrier attribute of all loads on this boat
-        for item in boat["loads"]:
-            load_key, load = get_load(item)
-            load["carrier"] = None
-            client.put(load)
+        # Update the source attribute of all readings on this station
+        for item in station["readings"]:
+            reading_key, reading = get_reading(item)
+            reading["source"] = None
+            client.put(reading)
 
-        # Update the boats attribute of the owner's user entity
+        # Update the stations attribute of the owner's user entity
         user = get_user_from_sub(payload["sub"])
-        boat_to_delete = [item for item in user["boats"] if item == boat.key.id][0]
-        user["boats"].remove(boat_to_delete)
+        station_to_delete = [item for item in user["stations"] if item == station.key.id][0]
+        user["stations"].remove(station_to_delete)
         client.put(user)
 
-        # Delete the boat
-        client.delete(boat_key)
+        # Delete the station
+        client.delete(station_key)
         return '', 204
     elif request.method == 'GET':
         validate_content_type(request)
-        boat = create_boat_repr(boat)
-        res = make_response(json.dumps(boat))
+        station = create_station_repr(station)
+        res = make_response(json.dumps(station))
         res.status_code = 200
         res.mimetype = constants.application_json
         return res
     elif request.method == 'PUT':
         validate_content_type(request)
         
-        # Replace boat entity content
+        # Replace station entity content
         content = request.get_json()
-        boat["name"] = content["name"]
-        boat["date_built"] = content["date_built"]
-        boat["length"] = content["length"]
+        station["name"] = content["name"]
+        station["on_since"] = content["on_since"]
+        station["reading_types"] = content["reading_types"]
 
-        # Remove boat to load relationships
-        for load in boat["loads"]:
-            delete_load(boat.key.id, load)
+        update_station_owner(id, content["owner"])
 
-        boat["loads"] = []
+        station["readings"] = []
 
-        # Update boat
-        client.put(boat)
+        # Update station
+        client.put(station)
         
-        # Return the boat object
-        boat = create_boat_repr(boat)
-        res = make_response(json.dumps(boat))
+        # Return the station object
+        station = create_station_repr(station)
+        res = make_response(json.dumps(station))
         res.mimetype = constants.application_json
         res.status_code = 200
         return res
@@ -335,100 +341,96 @@ def boats_get_put_patch_delete(id):
         validate_content_type(request)
         
         content = request.get_json()
-        for attr in content:
-            if attr != "loads":
-                boat[attr] = content[attr]
 
-        client.put(boat)
+        if "name" in content:
+            station["name"] = content["name"]
 
-        # Add any new loads
-        if 'loads' in content:
-            for load in content["loads"]:
+        if "on_since" in content:
+            station["on_since"] = content["on_since"]
+
+        if "reading_types" in content:
+            station["reading_types"] = content["reading_types"]
+
+        if "owner" in content:
+            update_station_owner(id, content["owner"])
+
+        client.put(station)
+
+        # Add any new readings
+        if 'readings' in content:
+            for reading in content["readings"]:
                 try:
-                    add_load(boat.key.id, load)
-                    boat["loads"].append(load)
+                    add_reading(station.key.id, reading)
+                    station["readings"].append(reading)
                 except(APIError):
-                    print("Load already on boat")
+                    print("reading already on station")
 
         return '', 204
     else:
         raise APIError(ERR_405_NO_METHOD)
 
-@app.route('/boats/<boat_id>/loads/<load_id>', methods=['PUT'])
-def add_load(boat_id,load_id):
-    # Authenticate owner
-    payload = verify_jwt(request)
-    boat_key, boat = get_boat(boat_id)
-    authorize_boat_owner(payload, boat)
-    load_key, load = get_load(load_id)
-    
-    # Check if the boat and/or load exists
-    if not boat or not load:
-        raise APIError(ERR_404_INVALID_ID)
-    # Check if load is on another boat
-    if load["carrier"]:
-        raise APIError(ERR_403_LOAD)
-    # Add boat to load
-    load["carrier"] = int(boat_id)
-    # Add load to boat
-    boat["loads"].append(int(load_id))
-    # Update both boat and load
-    client.put(load)
-    client.put(boat)
-    return '', 204
+@app.route('/stations/<station_id>/users/<user_id>', methods=['PUT', 'DELETE'])
+def update_station_owner(station_id, user_id):
+    if request.method == 'PUT':
+        # Authenticate owner
+        payload = verify_jwt(request)
+        station = get_station(station_id)[1]
+        authorize_station_owner(payload, station)
+        new_user = get_user(user_id)[1]
 
-@app.route('/boats/<boat_id>/loads/<load_id>', methods=['DELETE'])
-def delete_load(boat_id,load_id):
-    # Authenticate owner
-    payload = verify_jwt(request)
-    boat_key, boat = get_boat(boat_id)
-    authorize_boat_owner(payload, boat)
-    load_key, load = get_load(load_id)
-    
-    # Check if the boat and/or load exists
-    if not boat or not load:
-        raise APIError(ERR_404_INVALID_ID)
-    for item in boat["loads"]:
-        if item == int(load_id):
-            # Remove load from boat
-            boat["loads"].remove(item)
-            client.put(boat)
-            # Update load carrier
-            load["carrier"] = None
-            client.put(load)
-            return '', 204
-    # Return 404 if the load was not found on the boat
-    raise APIError(ERR_404_INVALID_ID)
+        # Check if the station and/or user exists
+        if not station or not new_user:
+            raise APIError(ERR_404_INVALID_ID)
+
+        # Check if the station is already owned by this user
+        if new_user.key.id == user_id:
+            raise APIError(ERR_403_SAME_STATION_OWNER)
+
+        # Change station owner
+        station["owner"] = new_user["sub"]
+        # Add station to new user's list
+        new_user["stations"].append(int(station_id))
+        # Remove station from old user's list
+        old_user = get_user_from_sub(payload["sub"])
+        old_user["stations"].remove(new_user.key.id)
+
+        # Update both station and users
+        client.put(new_user)
+        client.put(old_user)
+        client.put(station)
+        return '', 204
+    else:
+        raise APIError(ERR_405_NO_METHOD)
 
 # ---------------------------------------------
-#           LOADS APP ROUTES
+#           READINGS APP ROUTES
 # ---------------------------------------------
 
-@app.route('/loads', methods=['POST','GET'])
-def loads_get_post():
+@app.route('/readings', methods=['POST','GET'])
+def readings_get_post():
     if request.method == 'POST':
         validate_content_type(request)
 
         content = request.get_json()
-        new_load = datastore.entity.Entity(key=client.key(constants.loads))
+        new_reading = datastore.entity.Entity(key=client.key(constants.readings))
         try:
-            new_load.update({
-                "volume": content["volume"],
-                "carrier": None,
-                "item": content["item"],
-                "creation_date": content["creation_date"]
+            new_reading.update({
+                "reading_type": content["reading_type"],
+                "source": content["source"],
+                "value": content["value"],
+                "read_time": content["read_time"]
                 })
         except(KeyError):
             return ERR_400_INVALID_ATTR
-        client.put(new_load)
-        # Return the new load attributes
+        client.put(new_reading)
+        # Return the new reading attributes
         data = {
-            "id": new_load.key.id,
-            "volume": new_load["volume"],
-            "carrier": new_load["carrier"],
-            "item": new_load["item"],
-            "creation_date": new_load["creation_date"],
-            "self": request.base_url + '/' + str(new_load.key.id)
+            "id": new_reading.key.id,
+            "reading_type": new_reading["reading_type"],
+            "source": new_reading["source"],
+            "value": new_reading["value"],
+            "read_time": new_reading["read_time"],
+            "self": request.base_url + '/' + str(new_reading.key.id)
         }
         res = make_response(data)
         res.mimetype = constants.application_json
@@ -437,7 +439,7 @@ def loads_get_post():
     elif request.method == 'GET':
         validate_content_type(request)
         # Apply pagination to results
-        query = client.query(kind=constants.loads)
+        query = client.query(kind=constants.readings)
         q_limit = int(request.args.get('limit', '5'))
         q_offset = int(request.args.get('offset', '0'))
         l_iterator = query.fetch(limit= q_limit, offset=q_offset)
@@ -449,9 +451,9 @@ def loads_get_post():
         else:
             next_url = None
         repr_results = []
-        for load in results:
-            repr_results.append(create_load_repr(load))
-        data = {"loads": repr_results}
+        for reading in results:
+            repr_results.append(create_reading_repr(reading))
+        data = {"readings": repr_results}
         if next_url:
             data["next"] = next_url
         res = make_response(json.dumps(data))
@@ -461,73 +463,73 @@ def loads_get_post():
     else:
         raise APIError(ERR_405_NO_METHOD)
 
-@app.route('/loads/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
-def loads_get_put_patch_delete(id):
-    load_key, load = get_load(id)
+@app.route('/readings/<id>', methods=['DELETE','GET', 'PUT', 'PATCH'])
+def readings_get_put_patch_delete(id):
+    reading_key, reading = get_reading(id)
     if request.method == 'DELETE':
-        # Send 404 error if no boat with the requested id exists
-        if not load:
+        # Send 404 error if no station with the requested id exists
+        if not reading:
             raise APIError(ERR_404_INVALID_ID)
-        # Get boat carrying this load
-        if load["carrier"]:
-            boat_key = client.key(constants.boats, int(load["carrier"]["id"]))
-            boat = client.get(key=boat_key)
-            for item in boat["loads"]:
+        # Get station carrying this reading
+        if reading["source"]:
+            station_key = client.key(constants.stations, int(reading["source"]["id"]))
+            station = client.get(key=station_key)
+            for item in station["readings"]:
                 if item["id"] == id:
-                    boat["loads"].remove(item)
-                    client.put(boat)
+                    station["readings"].remove(item)
+                    client.put(station)
                     continue
 
-        client.delete(load_key)
+        client.delete(reading_key)
         return '', 204
     elif request.method == 'GET':
         validate_content_type(request)
-        # Send 404 error if no boat with the requested id exists
-        if not load:
+        # Send 404 error if no station with the requested id exists
+        if not reading:
             raise APIError(ERR_404_INVALID_ID)
-        load["id"] = load.key.id  # Add id value to response
-        load["self"] = request.base_url  # Add URL to response
-        # Create carrier representation
-        if load["carrier"]:
+        reading["id"] = reading.key.id  # Add id value to response
+        reading["self"] = request.base_url  # Add URL to response
+        # Create source representation
+        if reading["source"]:
             temp = {
-                "id": load["carrier"],
-                "name": get_boat(load["carrier"])[1]["name"],
-                "self": request.host_url + 'boats/' + str(load["carrier"])
+                "id": reading["source"],
+                "name": get_station(reading["source"])[1]["name"],
+                "self": request.host_url + 'stations/' + str(reading["source"])
             }
-            load["carrier"] = temp
-        res = make_response(json.dumps(load))
+            reading["source"] = temp
+        res = make_response(json.dumps(reading))
         res.status_code = 200
         res.mimetype = constants.application_json
         return res
     elif request.method == 'PUT':
         validate_content_type(request)
         
-        # Replace load entity content
+        # Replace reading entity content
         content = request.get_json()
-        load["volume"] = content["volume"]
-        load["item"] = content["item"]
-        load["creation_date"] = content["creation_date"]
+        reading["reading_type"] = content["reading_type"]
+        reading["value"] = content["value"]
+        reading["read_time"] = content["read_time"]
 
-        # Update load
-        client.put(load)
+        # Update reading
+        client.put(reading)
 
-        # Return the load object
-        load["id"] = load.key.id  # Add id value to response
-        load["self"] = request.base_url  # Add boat URL to response
-        res = make_response(json.dumps(load))
+        # Return the reading object
+        reading["id"] = reading.key.id  # Add id value to response
+        reading["self"] = request.base_url  # Add station URL to response
+        res = make_response(json.dumps(reading))
         res.mimetype = constants.application_json
         res.status_code = 200
         return res
     elif request.method == 'PATCH':
         validate_content_type(request)
         
-        # Replace boat entity content
+        # Replace station entity content
         content = request.get_json()
         for attr in content:
-            load[attr] = content[attr]
+            reading[attr] = content[attr]
 
-        # Update load
-        client.put(load)
+        # Update reading
+        client.put(reading)
         return '', 204
     else:
         raise APIError(ERR_405_NO_METHOD)

@@ -1,6 +1,6 @@
 # app specific constants
-boats = "boats"
-loads = "loads"
+stations = "stations"
+readings = "readings"
 users = "users"
 
 # generic constants
