@@ -637,12 +637,9 @@ JSON
 {"Error": "The MIME type of the request object is not accepted"}
 ```
 
-# View a Load
+# GET /loads/:load_id
 
 Allows you to get an existing Load.
-
-| GET /loads/:load\_id |
-| --- |
 
 ## Request
 
@@ -650,7 +647,7 @@ Allows you to get an existing Load.
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the Load |
+| load_id | ID of the Load |
 
 ### Headers
 
@@ -677,30 +674,39 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 200 OK |
- |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
 ### Response Examples
 
-#### Success
+- Status: 200 OK
+```json
+{
+    "volume": 5,
+    "item": "LEGO Blocks",
+    "carrier": {
+        "self": "https://myapiurl.com/boats/5353126425001984",
+        "id": "5353126425001984",
+        "name": "Sea Witch"
+    },
+    "creation_date": "10/18/2021",
+    "id": 4602261653159936,
+    "self": "https://myapiurl.com/loads/4602261653159936"
+}
+```
 
-| Status: 200 OK
-{"volume": 5,"item": "LEGO Blocks","carrier": {"self": "https://hw4-scrughap.wl.r.appspot.com/boats/5353126425001984","id": "5353126425001984","name": "Sea Witch"},"creation\_date": "10/18/2021","id": 4602261653159936,"self": "https://hw4-scrughap.wl.r.appspot.com/loads/4602261653159936"} |
-| --- |
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
-#### Failure
-
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| --- |
-| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
-
-# View all Loads
+# GET /loads
 
 List all the Loads using pagination. If limit and offset are omitted, they default to limit=5 and offset=0.
-
-| GET /loadsorGET /loads?limit=INT&amp;offset=INT |
-| --- |
 
 ## Request
 
@@ -723,7 +729,7 @@ None
 
 ### Request URL example
 
-https://myapiurl.com/loads?limit=5&amp;offset=0
+https://myapiurl.com/loads?limit=5&offset=0
 
 ## Response
 
@@ -736,31 +742,78 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 200 OK |
- |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
 ### Response Examples
 
-#### Success
+- Status: 200 OK
+```json
+{
+    "loads": [
+        {
+            "carrier": null,
+            "volume": 60,
+            "item": "Load #3",
+            "creation_date": "02-27-1991",
+            "id": 4548029034004480,
+            "self": "https://myapiurl.com/loads/4548029034004480"
+        },
+        {
+            "item": "DUPLO",
+            "creation_date": "04-12-1985",
+            "carrier": {
+                "id": 5843605314863104,
+                "name": "Patches The Boat",
+                "self": "https://myapiurl.com/boats/5843605314863104"
+            },
+            "volume": 500,
+            "id": 4551752837758976,
+            "self": "https://myapiurl.com/loads/4551752837758976"
+        },
+        {
+            "item": "Load #4",
+            "creation_date": "02-27-1991",
+            "volume": 60,
+            "carrier": null,
+            "id": 4999180384731136,
+            "self": "https://myapiurl.com/loads/4999180384731136"
+        },
+        {
+            "creation_date": "01-01-2000",
+            "carrier": null,
+            "volume": 45,
+            "item": "Kinects",
+            "id": 5224275996835840,
+            "self": "https://myapiurl.com/loads/5224275996835840"
+        },
+        {
+            "creation_date": "02-27-1991",
+            "item": "Load #6",
+            "volume": 60,
+            "carrier": null,
+            "id": 5677652744601600,
+            "self": "https://myapiurl.com/loads/5677652744601600"
+        }
+    ],
+    "next": "https://myapiurl.com/loads?limit=5&amp;offset=5"
+}
+```
 
-| Status: 200 OK{"loads": [{"carrier": null,"volume": 60,"item": "Load #3","creation\_date": "02-27-1991","id": 4548029034004480,"self": "https://myapiurl.com/loads/4548029034004480"},{"item": "DUPLO","creation\_date": "04-12-1985","carrier": {"id": 5843605314863104,"name": "Patches The Boat","self": "https://myapiurl.com/boats/5843605314863104"},"volume": 500,"id": 4551752837758976,"self": "https://myapiurl.com/loads/4551752837758976"},{"item": "Load #4","creation\_date": "02-27-1991","volume": 60,"carrier": null,"id": 4999180384731136,"self": "https://myapiurl.com/loads/4999180384731136"},{"creation\_date": "01-01-2000","carrier": null"volume": 45,"item": "Kinects","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"},{"creation\_date": "02-27-1991","item": "Load #6","volume": 60,"carrier": null,"id": 5677652744601600,"self": "https://myapiurl.com/loads/5677652744601600"}],"next": "https://myapiurl.com/loads?limit=5&amp;offset=5"} |
-| --- |
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
-#### Failure
+# PUT /loads/:load_id
 
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| --- |
-| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
+Allows you to replace an existing Load's attributes with new values.
 
-# Update (replace) a Load
-
-Allows you to replace an existing Load&#39;s attributes with new values.
-
-**NOTE: This endpoint does**  **not**  **modify the Load&#39;s "carrier" attribute.**
-
-| PUT /loads/:load\_id |
-| --- |
+**NOTE: This endpoint does not modify the Load's "carrier" attribute.**
 
 ## Request
 
@@ -768,7 +821,7 @@ Allows you to replace an existing Load&#39;s attributes with new values.
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the Load |
+| load_id | ID of the Load |
 
 ### Headers
 
@@ -790,12 +843,17 @@ JSON
 | --- | --- | --- |
 | volume | The number of the Load. | Yes |
 | item | A description of the item in the Load. | Yes |
-| creation\_date | Date the Load was created. | Yes |
+| creation_date | Date the Load was created. | Yes |
 
 ### Request Body Example
 
-| {"volume": 5,"item": "LEGO Blocks","creation\_date": "10-18-2021"} |
-| --- |
+```json
+{
+    "volume": 5,
+    "item": "LEGO Blocks",
+    "creation_date": "10-18-2021"
+}
+```
 
 ## Response
 
@@ -808,32 +866,37 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 200 OK |
- |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
 ### Response Examples
 
-#### Success
+- Status: 200 OK
+```json
+{
+    "carrier": null,
+    "volume": 45,
+    "item": "Kinects",
+    "creation_date": "01-01-2000",
+    "id": 5224275996835840,
+    "self": "https://myapiurl.com/loads/5224275996835840"
+}
+```
 
-| Status: 200 OK{"carrier": null"volume": 45,"item": "Kinects","creation\_date": "01-01-2000","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"} |
-| --- |
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
-#### Failure
+# PATCH /loads/:load_id
 
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| --- |
-| Status: 406 Not Acceptable
-{"Error": "The MIME type of the request object is not accepted"} |
-
-# Update (modify) a Load
-
-Allows you to modify a Load&#39;s attributes individually.
+Allows you to modify a Load's attributes individually.
 
 **NOTE: This endpoint does**  **not**  **modify the Load&#39;s "carrier" attribute.**
-
-| PATCH /loads/:load\_id |
-| --- |
 
 ## Request
 
@@ -841,7 +904,7 @@ Allows you to modify a Load&#39;s attributes individually.
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the Load |
+| load_id | ID of the Load |
 
 ### Headers
 
@@ -863,12 +926,15 @@ JSON
 | --- | --- | --- |
 | volume | The number of the Load. | No |
 | item | A description of the item in the Load. | No |
-| creation\_date | Date the Load was created. | No |
+| creation_date | Date the Load was created. | No |
 
 ### Request Body Example
 
-| {"volume": 500} |
-| --- |
+```json
+{
+    "volume": 500
+}
+```
 
 ## Response
 
@@ -881,31 +947,27 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 204 No Content |
- |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
 ### Response Examples
 
-#### Success
+- Status: 204 No Content
 
-| Status: 204 No Content |
-| --- |
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
-#### Failure
-
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| --- |
-| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
-
-# Delete a Load
+# DELETE /loads/:load_id
 
 Allows you to delete a Load. If the Load being deleted is currently on a Boat, the Load will also be removed from the Boat&#39;s "loads" attribute list.
 
 **NOTE: If the Load to be deleted has a carrier, only the User who owns the carrier/boat can delete this load since it requires modification of a Boat (protected resource).**
-
-| DELETE /loads/:load\_id |
-| --- |
 
 ## Request
 
@@ -913,7 +975,7 @@ Allows you to delete a Load. If the Load being deleted is currently on a Boat, t
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the load |
+| load_id | ID of the load |
 
 ### Headers
 
@@ -942,46 +1004,45 @@ Failure: JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 204 No Content |
- |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 
 ### Response Examples
 
-#### Success
+- Status: 204 No Content
 
-| Status: 204 No Content |
-| --- |
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
 
-#### Failure
-
-| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
-| --- |
-| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-
-# Add a Load to a Boat (protected)
+# PUT /boats/:boat_id/loads/:load_id (protected)
 
 Adds a Load to a Boat. A Load can only be on one Boat at a time.
 
-| PUT /boats/:boat\_id/loads/:load\_id |
-| --- |
-
 ## Request
 
 ### Path Parameters
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the Load |
-| boat\_id | ID of the Boat |
+| load_id | ID of the Load |
+| boat_id | ID of the Boat |
 
 ### Headers
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer <id\_token> | Yes |
+| Authorization | Bearer <id_token> | Yes |
 
 ### Request Body
 
@@ -1003,46 +1064,46 @@ Failure: JSON
 
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
-| Success | 204 No Content | Succeeds only if a boat exists with this boat\_id, a load exists with this load\_id and the load is not on another boat. |
+| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and the load is not on another boat. |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 
 ### Response Examples
 
-#### Success
+- Status: 204 No Content
 
-| Status: 204 No Content |
-| --- |
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
 
-#### Failure
-
-| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
-| --- |
-| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-
-# Remove a Load from a Boat (protected)
+# DELETE /boats/:boat_id/loads/:load_id (protected)
 
 A Load is removed from a Boat.
 
-| DELETE /boats/:boat\_id/loads/:load\_id |
-| --- |
-
 ## Request
 
 ### Path Parameters
 
 | **Name** | **Description** |
 | --- | --- |
-| load\_id | ID of the Load |
-| boat\_id | ID of the Boat |
+| load_id | ID of the Load |
+| boat_id | ID of the Boat |
 
 ### Headers
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer <id\_token> | Yes |
+| Authorization | Bearer <id_token> | Yes |
 
 ### Request Body
 
@@ -1064,23 +1125,24 @@ Failure: JSON
 
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
-| Success | 204 No Content | Succeeds only if a boat exists with this boat\_id, a load exists with this load\_id and this boat is at this load. |
+| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and this boat is at this load. |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 
 ### Response Examples
 
-#### Success
+- Status: 204 No Content
 
-| Status: 204 No Content |
-| --- |
-
-#### Failure
-
-| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
-| --- |
-| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-
-Page **46** of **46**
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
