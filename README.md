@@ -421,9 +421,9 @@ JSON
 {"Error": "The MIME type of the request object is not accepted"}
 ```
 
-# PATCH /loads/:load_id (protected)
+# PATCH /boats/:boat_id (protected)
 
-Allows you to modify a Boat&#39;s attributes individually. Any valid Load IDs provided in the "loads" attribute will add that Load to the Boat.
+Allows you to modify a Boat's attributes individually. Any valid Load IDs provided in the "loads" attribute will add that Load to the Boat.
 
 ## Request
 
@@ -504,7 +504,7 @@ Allows you to delete a boat. The "carrier" attribute of any Loads currently on t
 
 | **Name** | **Description** |
 | --- | --- |
-| boat\_id | ID of the boat |
+| boat_id | ID of the boat |
 
 ### Headers
 
@@ -584,12 +584,17 @@ JSON
 | --- | --- | --- |
 | volume | The number of the Load. | Yes |
 | item | A description of the item in the Load. | Yes |
-| creation\_date | Date the Load was created. | Yes |
+| creation_date | Date the Load was created. | Yes |
 
 ### Request Body Example
 
-| {"volume": 5,"item": "LEGO Blocks","creation\_date": "10-18-2021"} |
-| --- |
+```json
+{
+    "volume": 5,
+    "item": "LEGO Blocks",
+    "creation_date": "10-18-2021"
+}
+```
 
 ## Response
 
@@ -602,7 +607,6 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 201 Created |
- |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
@@ -612,17 +616,26 @@ JSON
 - The app also generates a "self" URL that is provided in the response.
 - The value of the attribute carrier is represented as an object with the ID, name, and URL of the Boat that the Load is currently on. If not loaded, carrier should be null.
 
-#### Success
+- Status: 201 Created
+```json
+{
+    "carrier": null,
+    "volume": 45,
+    "item": "Kinects",
+    "creation_date": "01-01-2000",
+    "id": 5224275996835840,
+    "self": "https://myapiurl.com/loads/5224275996835840"
+}
+```
 
-| Status: 201 Created{"carrier": null"volume": 45,"item": "Kinects","creation\_date": "01-01-2000","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"} |
-| --- |
-
-#### Failure
-
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| --- |
-| Status: 406 Not Acceptable
-{"Error": "The MIME type of the request object is not accepted"} |
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
 # View a Load
 
