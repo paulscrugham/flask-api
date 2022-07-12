@@ -61,7 +61,7 @@ None
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
 | Content-Type | application/json | Yes |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
@@ -106,33 +106,49 @@ JSON
 
 ### Response Examples
 
-- Datastore will automatically generate an ID and store it with the entity being created. The ID will be added to the response.
-- The app also generates a "self" URL that is provided in the response.
-- Loads on the Boat are stored as IDs in Datastore, and the representation is generated for the response.
-
-#### Success
-
-| Status: 201 Created{"date\_built": "10-09-2022","loads": [{"id": 5224275996835840,"item": "LEGO Blocks","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 28,"name": "Sea Witch","owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"} |
-| --- |
-
-#### Failure
-
-Status: 401 Unauthenticated (invalid JWT)
+- Status: 201 Created
 ```json
-{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+{
+    "date_built": "10-09-2022",
+    "loads": [
+        {
+            "id": 5224275996835840,
+            "item": "LEGO Blocks",
+            "self": "https://myapiurl.com/loads/5224275996835840"
+        }
+    ],
+    "length": 28,"
+    name": "Sea Witch",
+    "owner": "auth0|62ad3c8e5639f8d4ad21ad19",
+    "id": 5843605314863104,
+    "self": "https://myapiurl.com/boats/5843605314863104"
+}
 ```
-| --- |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
----
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{
+    "Error": "Invalid header. Use an RS256 signed JWT Access Token"
+}
+```
 
-## View a Boat (protected)
+- Status: 405 Method Not Allowed
+```json
+{
+    "Error": "Method not recognized."
+}
+```
+
+- Status: 406 Not Acceptable
+```json
+{
+    "Error": "The MIME type of the request object is not accepted"
+}
+```
+
+## GET /boats/:boat_id (protected)
 
 Allows you to get an existing Boat.
-
-| GET /boats/:boat\_id |
-| --- |
 
 ## Request
 
@@ -140,14 +156,14 @@ Allows you to get an existing Boat.
 
 | **Name** | **Description** |
 | --- | --- |
-| boat\_id | ID of the Boat |
+| boat_id | ID of the Boat |
 
 ### Headers
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
 | Content-Type | application/json | Yes |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id_token> | Yes |
 
 ### Request Body
 
@@ -168,7 +184,6 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 200 OK |
- |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
@@ -176,18 +191,47 @@ JSON
 
 ### Response Examples
 
-#### Success
+- Status: 200 OK
+```json
+{
+    "date_built": "11-01-1999",
+    "loads": [
+        {
+            "id": 4551752837758976,
+            "item": "DUPLO",
+            "self": "https://myapiurl.com/loads/4551752837758976"
+        },
+        {
+            "id": 5224275996835840,
+            "item": "Kinects",
+            "self": "https://myapiurl.com/loads/5224275996835840"
+        }
+    ],
+    "length": 500,
+    "name": "Patches The Boat",
+    "owner": "auth0|62ad3c8e5639f8d4ad21ad19",
+    "id": 5843605314863104,
+    "self": "https://myapiurl.com/boats/5843605314863104"
+}
+```
 
-| Status: 200 OK{"date\_built": "11-01-1999","loads": [{"id": 4551752837758976,"item": "DUPLO","self": "https://myapiurl.com/loads/4551752837758976"},{"id": 5224275996835840,"item": "Kinects","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 500,"name": "Patches The Boat","owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"} |
-| --- |
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
 
-#### Failure
-
-| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
-| --- |
-| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
 # View all Boats (protected)
 
@@ -210,7 +254,7 @@ List all the Boats for a particular User using pagination. If limit and offset a
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
 | Content-Type | application/json | Yes |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
@@ -274,7 +318,7 @@ Allows you to replace an existing Boat&#39;s attributes with new values. Removes
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
 | Content-Type | application/json | Yes |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
@@ -419,7 +463,7 @@ Allows you to delete a boat. The "carrier" attribute of any Loads currently on t
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
@@ -816,7 +860,7 @@ Allows you to delete a Load. If the Load being deleted is currently on a Boat, t
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer \&lt;id\_token\&gt; | Dependent on carrier status |
+| Authorization | Bearer <id\_token> | Dependent on carrier status |
 
 ### Request Body
 
@@ -878,7 +922,7 @@ Adds a Load to a Boat. A Load can only be on one Boat at a time.
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
@@ -939,7 +983,7 @@ A Load is removed from a Boat.
 
 | **Header** | **Value** | **Required?** |
 | --- | --- | --- |
-| Authorization | Bearer \&lt;id\_token\&gt; | Yes |
+| Authorization | Bearer <id\_token> | Yes |
 
 ### Request Body
 
