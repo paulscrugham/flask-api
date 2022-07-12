@@ -2,66 +2,25 @@
 
 This project demonstrates a RESTful Flask API that utilizes Google Cloud Build and Datastore and OAuth using Auth0.
 
-#
-## Final Project: API Spec
-
-CS 493: Cloud Application Development
-
-Spring 2022
-
-Oregon State University
-
-API and account creation URL: [https://myapiurl.com/](https://myapiurl.com/)
-
-[Datastore Data Model 2](#_Toc106551128)
-
-[Create a Boat (protected) 3](#_Toc106551129)
-
-[View a Boat (protected) 5](#_Toc106551130)
-
-[View all Boats (protected) 7](#_Toc106551131)
-
-[Update (replace) a Boat (protected) 10](#_Toc106551132)
-
-[Update (modify) a Boat (protected) 12](#_Toc106551133)
-
-[Delete a Boat (protected) 14](#_Toc106551134)
-
-[Create a Load 16](#_Toc106551135)
-
-[View a Load 18](#_Toc106551136)
-
-[View all Loads 20](#_Toc106551137)
-
-[Update (replace) a Load 23](#_Toc106551138)
-
-[Update (modify) a Load 25](#_Toc106551139)
-
-[Delete a Load 27](#_Toc106551140)
-
-[Add a Load to a Boat (protected) 29](#_Toc106551141)
-
-[Remove a Load from a Boat (protected) 31](#_Toc106551142)
-
 # Datastore Data Model
 
-The app stores three kinds of entities in Datastore: Users, Ships and Containers. If the required field is marked &quot;n/a&quot;, then the attribute is automatically added by the API.
+The app stores three kinds of entities in Datastore: Users, Boats and Loads. If the required field is marked "n/a", then the attribute is automatically added by the API.
 
 ## Users
 
 | **Property** | **Data Type** | **Required?** | **Valid Examples** |
 | --- | --- | --- | --- |
 | id | Integer | n/a | 5748403989258 |
-| name | String | Yes | &quot;Big Ship Shipping&quot; |
+| name | String | Yes | "Big Ship Shipping" |
 
 ## Boats
 
 | **Property** | **Data Type** | **Required?** | **Valid Examples** |
 | --- | --- | --- | --- |
 | id | Integer | n/a | 5839203948572 |
-| name | String | Yes | &quot;Evergreen&quot; |
+| name | String | Yes | "Evergreen" |
 | length | Integer | Yes | 150 |
-| date\_built | String | Yes | &quot;10-09-2022&quot; |
+| date\_built | String | Yes | "10-09-2022" |
 | owner | Integer | Yes | 5748403989258 |
 | loads | List of ID Integers | Yes | [4602261653159936, 9385930294956] |
 | self | String | n/a | https://myapiurl.com/5839203948572 |
@@ -73,24 +32,23 @@ The app stores three kinds of entities in Datastore: Users, Ships and Containers
 | id | Integer | n/a | 4859203957185 |
 | volume | Integer | Yes | 500 |
 | carrier | Integer ID or null | Yes | 5839203948572 or Null |
-| item | String | Yes | &quot;Shoes&quot; |
-| creation\_date | String | Yes | &quot;10-09-2022&quot; |
+| item | String | Yes | "Shoes" |
+| creation\_date | String | Yes | "10-09-2022" |
 | self | String | n/a | https://myapiurl.com/4859203957185 |
 
 ## Relationship Between Non-User Entities
 
-The non-user entities are Boats and Loads. A Boat entity has a &quot;loads&quot; attribute which holds a list of load IDs that it is currently carrying. A Load entity has a &quot;carrier&quot; attribute which holds the ID of the Boat carrying the Load, or Null if it is not being carried.
+The non-user entities are Boats and Loads. A Boat entity has a "loads" attribute which holds a list of load IDs that it is currently carrying. A Load entity has a "carrier" attribute which holds the ID of the Boat carrying the Load, or Null if it is not being carried.
 
 ## How the User Entity is Modelled
 
-The User entity represents companies or owners of the Boats. A User entity has a &quot;Boats&quot; attribute which contains a list of all the Boat IDs which a User owns. The unique identifier for a User that is stored in Google Datastore is the JWT &quot;sub&quot; attribute. This makes it easy to check if an incoming request is authorized to access a particular resource. Every request to a protected resource must supply the &quot;id\_token&quot; of a JWT.
+The User entity represents companies or owners of the Boats. A User entity has a "Boats" attribute which contains a list of all the Boat IDs which a User owns. The unique identifier for a User that is stored in Google Datastore is the JWT "sub" attribute. This makes it easy to check if an incoming request is authorized to access a particular resource. Every request to a protected resource must supply the "id\_token" of a JWT.
 
-# Create a Boat (protected)
+# API Endpoints
+
+## POST /boats (protected)
 
 Allows you to create a new boat.
-
-| POST /boats |
-| --- |
 
 ## Request
 
@@ -123,8 +81,13 @@ JSON
 
 ### Request Body Example
 
-| {&quot;name&quot;: &quot;Sea Witch&quot;,&quot;date\_built&quot;: &quot;10-09-2022&quot;,&quot;length&quot;: 28} |
-| --- |
+```json
+{
+    "name": "Sea Witch", 
+    "date_built": "10-09-2022", 
+    "length": 28
+}
+```
 
 ## Response
 
@@ -137,7 +100,6 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 201 Created |
- |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
@@ -145,22 +107,27 @@ JSON
 ### Response Examples
 
 - Datastore will automatically generate an ID and store it with the entity being created. The ID will be added to the response.
-- The app also generates a &quot;self&quot; URL that is provided in the response.
+- The app also generates a "self" URL that is provided in the response.
 - Loads on the Boat are stored as IDs in Datastore, and the representation is generated for the response.
 
 #### Success
 
-| Status: 201 Created{&quot;date\_built&quot;: &quot;10-09-2022&quot;,&quot;loads&quot;: [{&quot;id&quot;: 5224275996835840,&quot;item&quot;: &quot;LEGO Blocks&quot;,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;}],&quot;length&quot;: 28,&quot;name&quot;: &quot;Sea Witch&quot;,&quot;owner&quot;: &quot;auth0|62ad3c8e5639f8d4ad21ad19&quot;,&quot;id&quot;: 5843605314863104,&quot;self&quot;: &quot;https://myapiurl.com/boats/5843605314863104&quot;} |
+| Status: 201 Created{"date\_built": "10-09-2022","loads": [{"id": 5224275996835840,"item": "LEGO Blocks","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 28,"name": "Sea Witch","owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"} |
 | --- |
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
 | --- |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
-# View a Boat (protected)
+---
+
+## View a Boat (protected)
 
 Allows you to get an existing Boat.
 
@@ -211,16 +178,16 @@ JSON
 
 #### Success
 
-| Status: 200 OK{&quot;date\_built&quot;: &quot;11-01-1999&quot;,&quot;loads&quot;: [{&quot;id&quot;: 4551752837758976,&quot;item&quot;: &quot;DUPLO&quot;,&quot;self&quot;: &quot;https://myapiurl.com/loads/4551752837758976&quot;},{&quot;id&quot;: 5224275996835840,&quot;item&quot;: &quot;Kinects&quot;,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;}],&quot;length&quot;: 500,&quot;name&quot;: &quot;Patches The Boat&quot;,&quot;owner&quot;: &quot;auth0|62ad3c8e5639f8d4ad21ad19&quot;,&quot;id&quot;: 5843605314863104,&quot;self&quot;: &quot;https://myapiurl.com/boats/5843605314863104&quot;} |
+| Status: 200 OK{"date\_built": "11-01-1999","loads": [{"id": 4551752837758976,"item": "DUPLO","self": "https://myapiurl.com/loads/4551752837758976"},{"id": 5224275996835840,"item": "Kinects","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 500,"name": "Patches The Boat","owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"} |
 | --- |
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # View all Boats (protected)
 
@@ -274,18 +241,18 @@ JSON
 #### Success
 
 | Status: 200 OK
-{&quot;boats&quot;: [{&quot;date\_built&quot;: &quot;01-11-1925&quot;,&quot;owner&quot;: &quot;auth0|62ad3c8e5639f8d4ad21ad19&quot;,&quot;name&quot;: &quot;The Next Boat&quot;,&quot;loads&quot;: [],&quot;length&quot;: 14,&quot;id&quot;: 5280655361441792,&quot;self&quot;: &quot;https://myapiurl.com/boats/5280655361441792&quot;},{&quot;name&quot;: &quot;Patches The Boat&quot;,&quot;date\_built&quot;: &quot;11-01-1999&quot;,&quot;loads&quot;: [{&quot;id&quot;: 4551752837758976,&quot;item&quot;: &quot;DUPLO&quot;,&quot;self&quot;: &quot;https://myapiurl.com/loads/4551752837758976&quot;},{&quot;id&quot;: 5224275996835840,&quot;item&quot;: &quot;Kinects&quot;,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;}],&quot;length&quot;: 500,&quot;owner&quot;: &quot;auth0|62ad3c8e5639f8d4ad21ad19&quot;,&quot;id&quot;: 5843605314863104,&quot;self&quot;: &quot;https://myapiurl.com/boats/5843605314863104&quot;}]} |
+{"boats": [{"date\_built": "01-11-1925","owner": "auth0|62ad3c8e5639f8d4ad21ad19","name": "The Next Boat","loads": [],"length": 14,"id": 5280655361441792,"self": "https://myapiurl.com/boats/5280655361441792"},{"name": "Patches The Boat","date\_built": "11-01-1999","loads": [{"id": 4551752837758976,"item": "DUPLO","self": "https://myapiurl.com/loads/4551752837758976"},{"id": 5224275996835840,"item": "Kinects","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 500,"owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"}]} |
 | --- |
 
 ####
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | Status: 406 Not Acceptable
-{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+{"Error": "The MIME type of the request object is not accepted"} |
 
 # Update (replace) a Boat (protected)
 
@@ -327,7 +294,7 @@ JSON
 
 ### Request Body Example
 
-| {&quot;volume&quot;: 5,&quot;item&quot;: &quot;LEGO Blocks&quot;,&quot;creation\_date&quot;: &quot;10-18-2021&quot;} |
+| {"volume": 5,"item": "LEGO Blocks","creation\_date": "10-18-2021"} |
 | --- |
 
 ## Response
@@ -351,20 +318,20 @@ JSON
 
 #### Success
 
-| Status: 200 OK{&quot;date\_built&quot;: &quot;10-09-2022&quot;,&quot;loads&quot;: [],&quot;length&quot;: 28,&quot;name&quot;: &quot;Sea Witch&quot;,&quot;owner&quot;: &quot;auth0|62ad3c8e5639f8d4ad21ad19&quot;,&quot;id&quot;: 5843605314863104,&quot;self&quot;: &quot;https://myapiurl.com/boats/5843605314863104&quot;} |
+| Status: 200 OK{"date\_built": "10-09-2022","loads": [],"length": 28,"name": "Sea Witch","owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"} |
 | --- |
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # Update (modify) a Boat (protected)
 
-Allows you to modify a Boat&#39;s attributes individually. Any valid Load IDs provided in the &quot;loads&quot; attribute will add that Load to the Boat.
+Allows you to modify a Boat&#39;s attributes individually. Any valid Load IDs provided in the "loads" attribute will add that Load to the Boat.
 
 | PATCH /loads/:load\_id |
 | --- |
@@ -402,7 +369,7 @@ JSON
 
 ### Request Body Example
 
-| {&quot;name&quot;: &quot;Patches The Boat&quot;,&quot;loads&quot;: [5224275996835840]} |
+| {"name": "Patches The Boat","loads": [5224275996835840]} |
 | --- |
 
 ## Response
@@ -429,13 +396,13 @@ JSON
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # Delete a Boat (protected)
 
-Allows you to delete a boat. The &quot;carrier&quot; attribute of any Loads currently on the Boat will be updated to null.
+Allows you to delete a boat. The "carrier" attribute of any Loads currently on the Boat will be updated to null.
 
 | DELETE /boats/:boat\_id |
 | --- |
@@ -489,10 +456,10 @@ Failure: JSON
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 
 # Create a Load
 
@@ -531,7 +498,7 @@ JSON
 
 ### Request Body Example
 
-| {&quot;volume&quot;: 5,&quot;item&quot;: &quot;LEGO Blocks&quot;,&quot;creation\_date&quot;: &quot;10-18-2021&quot;} |
+| {"volume": 5,"item": "LEGO Blocks","creation\_date": "10-18-2021"} |
 | --- |
 
 ## Response
@@ -552,20 +519,20 @@ JSON
 ### Response Examples
 
 - Datastore will automatically generate an ID and store it with the entity being created. This value will be added to the response body at the time of the request.
-- The app also generates a &quot;self&quot; URL that is provided in the response.
+- The app also generates a "self" URL that is provided in the response.
 - The value of the attribute carrier is represented as an object with the ID, name, and URL of the Boat that the Load is currently on. If not loaded, carrier should be null.
 
 #### Success
 
-| Status: 201 Created{&quot;carrier&quot;: null&quot;volume&quot;: 45,&quot;item&quot;: &quot;Kinects&quot;,&quot;creation\_date&quot;: &quot;01-01-2000&quot;,&quot;id&quot;: 5224275996835840,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;} |
+| Status: 201 Created{"carrier": null"volume": 45,"item": "Kinects","creation\_date": "01-01-2000","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"} |
 | --- |
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
 | Status: 406 Not Acceptable
-{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+{"Error": "The MIME type of the request object is not accepted"} |
 
 # View a Load
 
@@ -616,14 +583,14 @@ JSON
 #### Success
 
 | Status: 200 OK
-{&quot;volume&quot;: 5,&quot;item&quot;: &quot;LEGO Blocks&quot;,&quot;carrier&quot;: {&quot;self&quot;: &quot;https://hw4-scrughap.wl.r.appspot.com/boats/5353126425001984&quot;,&quot;id&quot;: &quot;5353126425001984&quot;,&quot;name&quot;: &quot;Sea Witch&quot;},&quot;creation\_date&quot;: &quot;10/18/2021&quot;,&quot;id&quot;: 4602261653159936,&quot;self&quot;: &quot;https://hw4-scrughap.wl.r.appspot.com/loads/4602261653159936&quot;} |
+{"volume": 5,"item": "LEGO Blocks","carrier": {"self": "https://hw4-scrughap.wl.r.appspot.com/boats/5353126425001984","id": "5353126425001984","name": "Sea Witch"},"creation\_date": "10/18/2021","id": 4602261653159936,"self": "https://hw4-scrughap.wl.r.appspot.com/loads/4602261653159936"} |
 | --- |
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # View all Loads
 
@@ -674,20 +641,20 @@ JSON
 
 #### Success
 
-| Status: 200 OK{&quot;loads&quot;: [{&quot;carrier&quot;: null,&quot;volume&quot;: 60,&quot;item&quot;: &quot;Load #3&quot;,&quot;creation\_date&quot;: &quot;02-27-1991&quot;,&quot;id&quot;: 4548029034004480,&quot;self&quot;: &quot;https://myapiurl.com/loads/4548029034004480&quot;},{&quot;item&quot;: &quot;DUPLO&quot;,&quot;creation\_date&quot;: &quot;04-12-1985&quot;,&quot;carrier&quot;: {&quot;id&quot;: 5843605314863104,&quot;name&quot;: &quot;Patches The Boat&quot;,&quot;self&quot;: &quot;https://myapiurl.com/boats/5843605314863104&quot;},&quot;volume&quot;: 500,&quot;id&quot;: 4551752837758976,&quot;self&quot;: &quot;https://myapiurl.com/loads/4551752837758976&quot;},{&quot;item&quot;: &quot;Load #4&quot;,&quot;creation\_date&quot;: &quot;02-27-1991&quot;,&quot;volume&quot;: 60,&quot;carrier&quot;: null,&quot;id&quot;: 4999180384731136,&quot;self&quot;: &quot;https://myapiurl.com/loads/4999180384731136&quot;},{&quot;creation\_date&quot;: &quot;01-01-2000&quot;,&quot;carrier&quot;: null&quot;volume&quot;: 45,&quot;item&quot;: &quot;Kinects&quot;,&quot;id&quot;: 5224275996835840,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;},{&quot;creation\_date&quot;: &quot;02-27-1991&quot;,&quot;item&quot;: &quot;Load #6&quot;,&quot;volume&quot;: 60,&quot;carrier&quot;: null,&quot;id&quot;: 5677652744601600,&quot;self&quot;: &quot;https://myapiurl.com/loads/5677652744601600&quot;}],&quot;next&quot;: &quot;https://myapiurl.com/loads?limit=5&amp;offset=5&quot;} |
+| Status: 200 OK{"loads": [{"carrier": null,"volume": 60,"item": "Load #3","creation\_date": "02-27-1991","id": 4548029034004480,"self": "https://myapiurl.com/loads/4548029034004480"},{"item": "DUPLO","creation\_date": "04-12-1985","carrier": {"id": 5843605314863104,"name": "Patches The Boat","self": "https://myapiurl.com/boats/5843605314863104"},"volume": 500,"id": 4551752837758976,"self": "https://myapiurl.com/loads/4551752837758976"},{"item": "Load #4","creation\_date": "02-27-1991","volume": 60,"carrier": null,"id": 4999180384731136,"self": "https://myapiurl.com/loads/4999180384731136"},{"creation\_date": "01-01-2000","carrier": null"volume": 45,"item": "Kinects","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"},{"creation\_date": "02-27-1991","item": "Load #6","volume": 60,"carrier": null,"id": 5677652744601600,"self": "https://myapiurl.com/loads/5677652744601600"}],"next": "https://myapiurl.com/loads?limit=5&amp;offset=5"} |
 | --- |
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # Update (replace) a Load
 
 Allows you to replace an existing Load&#39;s attributes with new values.
 
-**NOTE: This endpoint does**  **not**  **modify the Load&#39;s &quot;carrier&quot; attribute.**
+**NOTE: This endpoint does**  **not**  **modify the Load&#39;s "carrier" attribute.**
 
 | PUT /loads/:load\_id |
 | --- |
@@ -724,7 +691,7 @@ JSON
 
 ### Request Body Example
 
-| {&quot;volume&quot;: 5,&quot;item&quot;: &quot;LEGO Blocks&quot;,&quot;creation\_date&quot;: &quot;10-18-2021&quot;} |
+| {"volume": 5,"item": "LEGO Blocks","creation\_date": "10-18-2021"} |
 | --- |
 
 ## Response
@@ -746,21 +713,21 @@ JSON
 
 #### Success
 
-| Status: 200 OK{&quot;carrier&quot;: null&quot;volume&quot;: 45,&quot;item&quot;: &quot;Kinects&quot;,&quot;creation\_date&quot;: &quot;01-01-2000&quot;,&quot;id&quot;: 5224275996835840,&quot;self&quot;: &quot;https://myapiurl.com/loads/5224275996835840&quot;} |
+| Status: 200 OK{"carrier": null"volume": 45,"item": "Kinects","creation\_date": "01-01-2000","id": 5224275996835840,"self": "https://myapiurl.com/loads/5224275996835840"} |
 | --- |
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
 | Status: 406 Not Acceptable
-{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+{"Error": "The MIME type of the request object is not accepted"} |
 
 # Update (modify) a Load
 
 Allows you to modify a Load&#39;s attributes individually.
 
-**NOTE: This endpoint does**  **not**  **modify the Load&#39;s &quot;carrier&quot; attribute.**
+**NOTE: This endpoint does**  **not**  **modify the Load&#39;s "carrier" attribute.**
 
 | PATCH /loads/:load\_id |
 | --- |
@@ -797,7 +764,7 @@ JSON
 
 ### Request Body Example
 
-| {&quot;volume&quot;: 500} |
+| {"volume": 500} |
 | --- |
 
 ## Response
@@ -824,13 +791,13 @@ JSON
 
 #### Failure
 
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 | --- |
-| Status: 406 Not Acceptable{&quot;Error&quot;: &quot;The MIME type of the request object is not accepted&quot;} |
+| Status: 406 Not Acceptable{"Error": "The MIME type of the request object is not accepted"} |
 
 # Delete a Load
 
-Allows you to delete a Load. If the Load being deleted is currently on a Boat, the Load will also be removed from the Boat&#39;s &quot;loads&quot; attribute list.
+Allows you to delete a Load. If the Load being deleted is currently on a Boat, the Load will also be removed from the Boat&#39;s "loads" attribute list.
 
 **NOTE: If the Load to be deleted has a carrier, only the User who owns the carrier/boat can delete this load since it requires modification of a Boat (protected resource).**
 
@@ -886,10 +853,10 @@ Failure: JSON
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 
 # Add a Load to a Boat (protected)
 
@@ -947,10 +914,10 @@ Failure: JSON
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 
 # Remove a Load from a Boat (protected)
 
@@ -1008,9 +975,9 @@ Failure: JSON
 
 #### Failure
 
-| Status: 401 Unauthenticated (invalid JWT){&quot;Error&quot;: &quot;Invalid header. Use an RS256 signed JWT Access Token&quot;} |
+| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
 | --- |
-| Status: 403 Forbidden{&quot;Error&quot;: &quot;This boat is owned by someone else.&quot;} |
-| Status: 405 Method Not Allowed{&quot;Error&quot;: &quot;Method not recognized.&quot;} |
+| Status: 403 Forbidden{"Error": "This boat is owned by someone else."} |
+| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
 
 Page **46** of **46**
