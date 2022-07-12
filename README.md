@@ -117,8 +117,8 @@ JSON
             "self": "https://myapiurl.com/loads/5224275996835840"
         }
     ],
-    "length": 28,"
-    name": "Sea Witch",
+    "length": 28,
+    "name": "Sea Witch",
     "owner": "auth0|62ad3c8e5639f8d4ad21ad19",
     "id": 5843605314863104,
     "self": "https://myapiurl.com/boats/5843605314863104"
