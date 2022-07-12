@@ -233,12 +233,9 @@ JSON
 {"Error": "The MIME type of the request object is not accepted"}
 ```
 
-# View all Boats (protected)
+# GET /boats (protected)
 
 List all the Boats for a particular User using pagination. If limit and offset are omitted, they default to limit=5 and offset=0.
-
-| GET /boatsorGET /boats?limit=INT&amp;offset=INT |
-| --- |
 
 ## Request
 
@@ -275,28 +272,61 @@ JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 200 OK |
- |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
 | Failure | 406 Not Acceptable | Requests must specify JSON as the response format. |
 
 ### Response Examples
 
-#### Success
+- Status: 200 OK
+```json
+{
+    "boats": [
+        {
+            "date_built": "01-11-1925",
+            "owner": "auth0|62ad3c8e5639f8d4ad21ad19",
+            "name": "The Next Boat",
+            "loads": [],
+            "length": 14,
+            "id": 5280655361441792,
+            "self": "https://myapiurl.com/boats/5280655361441792"
+        },
+        {
+            "name": "Patches The Boat",
+            "date_built": "11-01-1999",
+            "loads": [
+                {
+                    "id": 4551752837758976,
+                    "item": "DUPLO",
+                    "self": "https://myapiurl.com/loads/4551752837758976"
+                },
+                {
+                    "id": 5224275996835840,
+                    "item": "Kinects",
+                    "self": "https://myapiurl.com/loads/5224275996835840"
+                }
+            ],
+            "length": 500,
+            "owner": "auth0|62ad3c8e5639f8d4ad21ad19",
+            "id": 5843605314863104,
+            "self": "https://myapiurl.com/boats/5843605314863104"
+        }
+    ]
+}
+```
 
-| Status: 200 OK
-{"boats": [{"date\_built": "01-11-1925","owner": "auth0|62ad3c8e5639f8d4ad21ad19","name": "The Next Boat","loads": [],"length": 14,"id": 5280655361441792,"self": "https://myapiurl.com/boats/5280655361441792"},{"name": "Patches The Boat","date\_built": "11-01-1999","loads": [{"id": 4551752837758976,"item": "DUPLO","self": "https://myapiurl.com/loads/4551752837758976"},{"id": 5224275996835840,"item": "Kinects","self": "https://myapiurl.com/loads/5224275996835840"}],"length": 500,"owner": "auth0|62ad3c8e5639f8d4ad21ad19","id": 5843605314863104,"self": "https://myapiurl.com/boats/5843605314863104"}]} |
-| --- |
-
-####
-
-#### Failure
-
-| Status: 401 Unauthenticated (invalid JWT){"Error": "Invalid header. Use an RS256 signed JWT Access Token"} |
-| --- |
-| Status: 405 Method Not Allowed{"Error": "Method not recognized."} |
-| Status: 406 Not Acceptable
-{"Error": "The MIME type of the request object is not accepted"} |
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+- Status: 406 Not Acceptable
+```json
+{"Error": "The MIME type of the request object is not accepted"}
+```
 
 # Update (replace) a Boat (protected)
 
