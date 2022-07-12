@@ -704,6 +704,128 @@ JSON
 {"Error": "The MIME type of the request object is not accepted"}
 ```
 
+# PUT /boats/:boat_id/loads/:load_id (protected)
+
+Adds a Load to a Boat. A Load can only be on one Boat at a time.
+
+## Request
+
+### Path Parameters
+
+| **Name** | **Description** |
+| --- | --- |
+| load_id | ID of the Load |
+| boat_id | ID of the Boat |
+
+### Headers
+
+| **Header** | **Value** | **Required?** |
+| --- | --- | --- |
+| Authorization | Bearer <id_token> | Yes |
+
+### Request Body
+
+None
+
+### Request URL example
+
+https://myapiurl.com/boats/5670392840585216/loads/4602261653159936
+
+## Response
+
+### Response Body Format
+
+Success: No body
+
+Failure: JSON
+
+### Response Statuses
+
+| **Outcome** | **Status Code** | **Notes** |
+| --- | --- | --- |
+| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and the load is not on another boat. |
+| Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
+| Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
+| Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
+
+### Response Examples
+
+- Status: 204 No Content
+
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+
+# DELETE /boats/:boat_id/loads/:load_id (protected)
+
+A Load is removed from a Boat.
+
+## Request
+
+### Path Parameters
+
+| **Name** | **Description** |
+| --- | --- |
+| load_id | ID of the Load |
+| boat_id | ID of the Boat |
+
+### Headers
+
+| **Header** | **Value** | **Required?** |
+| --- | --- | --- |
+| Authorization | Bearer <id_token> | Yes |
+
+### Request Body
+
+None
+
+### Request URL example
+
+https://myapiurl.com/boats/5670392840585216/loads/4602261653159936
+
+## Response
+
+### Response Body Format
+
+Success: No body
+
+Failure: JSON
+
+### Response Statuses
+
+| **Outcome** | **Status Code** | **Notes** |
+| --- | --- | --- |
+| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and this boat is at this load. |
+| Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
+| Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
+| Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
+
+### Response Examples
+
+- Status: 204 No Content
+
+- Status: 401 Unauthenticated (invalid JWT)
+```json
+{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
+```
+- Status: 403 Forbidden
+```json
+{"Error": "This boat is owned by someone else."}
+```
+- Status: 405 Method Not Allowed
+```json
+{"Error": "Method not recognized."}
+```
+
 # GET /loads
 
 List all the Loads using pagination. If limit and offset are omitted, they default to limit=5 and offset=0.
@@ -1004,128 +1126,6 @@ Failure: JSON
 | **Outcome** | **Status Code** | **Notes** |
 | --- | --- | --- |
 | Success | 204 No Content |
-| Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
-| Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
-| Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
-
-### Response Examples
-
-- Status: 204 No Content
-
-- Status: 401 Unauthenticated (invalid JWT)
-```json
-{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
-```
-- Status: 403 Forbidden
-```json
-{"Error": "This boat is owned by someone else."}
-```
-- Status: 405 Method Not Allowed
-```json
-{"Error": "Method not recognized."}
-```
-
-# PUT /boats/:boat_id/loads/:load_id (protected)
-
-Adds a Load to a Boat. A Load can only be on one Boat at a time.
-
-## Request
-
-### Path Parameters
-
-| **Name** | **Description** |
-| --- | --- |
-| load_id | ID of the Load |
-| boat_id | ID of the Boat |
-
-### Headers
-
-| **Header** | **Value** | **Required?** |
-| --- | --- | --- |
-| Authorization | Bearer <id_token> | Yes |
-
-### Request Body
-
-None
-
-### Request URL example
-
-https://myapiurl.com/boats/5670392840585216/loads/4602261653159936
-
-## Response
-
-### Response Body Format
-
-Success: No body
-
-Failure: JSON
-
-### Response Statuses
-
-| **Outcome** | **Status Code** | **Notes** |
-| --- | --- | --- |
-| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and the load is not on another boat. |
-| Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
-| Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
-| Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
-
-### Response Examples
-
-- Status: 204 No Content
-
-- Status: 401 Unauthenticated (invalid JWT)
-```json
-{"Error": "Invalid header. Use an RS256 signed JWT Access Token"}
-```
-- Status: 403 Forbidden
-```json
-{"Error": "This boat is owned by someone else."}
-```
-- Status: 405 Method Not Allowed
-```json
-{"Error": "Method not recognized."}
-```
-
-# DELETE /boats/:boat_id/loads/:load_id (protected)
-
-A Load is removed from a Boat.
-
-## Request
-
-### Path Parameters
-
-| **Name** | **Description** |
-| --- | --- |
-| load_id | ID of the Load |
-| boat_id | ID of the Boat |
-
-### Headers
-
-| **Header** | **Value** | **Required?** |
-| --- | --- | --- |
-| Authorization | Bearer <id_token> | Yes |
-
-### Request Body
-
-None
-
-### Request URL example
-
-https://myapiurl.com/boats/5670392840585216/loads/4602261653159936
-
-## Response
-
-### Response Body Format
-
-Success: No body
-
-Failure: JSON
-
-### Response Statuses
-
-| **Outcome** | **Status Code** | **Notes** |
-| --- | --- | --- |
-| Success | 204 No Content | Succeeds only if a boat exists with this boat_id, a load exists with this load_id and this boat is at this load. |
 | Failure | 401 Unauthenticated | Invalid JWT (expired, missing, malformed, etc) |
 | Failure | 403 Forbidden | A User is authenticated with the provided JWT, but not authorized to access this resource. |
 | Failure | 405 Method Not Allowed | Request was made with invalid HTTP method |
